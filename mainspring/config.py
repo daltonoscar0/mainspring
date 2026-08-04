@@ -13,12 +13,15 @@ which directory you happen to launch from.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Literal
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -38,6 +41,14 @@ SITE_DIR = Path(os.environ.get("SITE_DIR", REPO_ROOT / "site"))
 SUBSCRIPTIONS_PATH = Path(
     os.environ.get("SUBSCRIPTIONS_PATH", REPO_ROOT / "subscriptions.yaml")
 )
+
+#: Shipped example list, used when no ``subscriptions.yaml`` exists.
+#:
+#: ``subscriptions.yaml`` is gitignored — what you read is exactly what this
+#: project exists to keep to yourself — so a fresh clone has no list at all.
+#: Falling back to the example means ``build_edition.py`` produces a real edition
+#: immediately instead of failing on a missing file.
+EXAMPLE_SUBSCRIPTIONS_PATH = REPO_ROOT / "subscriptions.example.yaml"
 
 # ---------------------------------------------------------------------------
 # Environment flags
@@ -272,6 +283,11 @@ def parse_subscriptions(raw: object, *, source: str = "<memory>") -> list[Subscr
 def load_subscriptions(path: Path | str | None = None) -> list[Subscription]:
     """Read and validate subscriptions.yaml.
 
+    Falls back to the shipped example list when no ``subscriptions.yaml`` exists,
+    logging a warning — a fresh clone should build something rather than fail on a
+    missing file. An explicitly passed ``path`` is never substituted: if you named
+    a file, you meant that file.
+
     Args:
         path: Override the default location (``SUBSCRIPTIONS_PATH``).
 
@@ -279,14 +295,25 @@ def load_subscriptions(path: Path | str | None = None) -> list[Subscription]:
         Every configured publication, free and paid, in file order.
 
     Raises:
-        SubscriptionsError: if the file does not exist or fails validation.
+        SubscriptionsError: if no list can be found, or the one found is invalid.
     """
     target = Path(path) if path is not None else SUBSCRIPTIONS_PATH
+
+    if not target.exists() and path is None and EXAMPLE_SUBSCRIPTIONS_PATH.exists():
+        logger.warning(
+            "%s not found — using the example list at %s. Copy it and edit: "
+            "cp subscriptions.example.yaml subscriptions.yaml",
+            target.name,
+            EXAMPLE_SUBSCRIPTIONS_PATH.name,
+        )
+        target = EXAMPLE_SUBSCRIPTIONS_PATH
+
     if not target.exists():
         raise SubscriptionsError(
             f"{target} not found. Mainspring reads the publications you subscribe "
-            "to from subscriptions.yaml in the repository root; set "
-            "SUBSCRIPTIONS_PATH to keep it elsewhere."
+            "to from subscriptions.yaml in the repository root; copy "
+            "subscriptions.example.yaml to start, or set SUBSCRIPTIONS_PATH to "
+            "keep the file elsewhere."
         )
 
     with target.open("r", encoding="utf-8") as handle:

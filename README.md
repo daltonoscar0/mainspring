@@ -1,5 +1,4 @@
-<!-- SCREENSHOT — replace this line with: ![The Mainspring front page](docs/screenshot.png)
-     Generate it by building an edition and capturing site/index.html at 1400px wide. -->
+![A Mainspring front page](docs/screenshot.png)
 
 # Mainspring
 
@@ -77,8 +76,14 @@ pip install -r requirements.txt
 
 ### 3. List what you read
 
-Edit `subscriptions.yaml`. It ships with six free publications so a fresh install
-has a full front page immediately; replace them with yours.
+```bash
+cp subscriptions.example.yaml subscriptions.yaml
+```
+
+Then edit it. `subscriptions.yaml` is gitignored — what you read is exactly the
+sort of thing this project exists to keep to yourself — and if you skip this step
+Mainspring falls back to the example list, so a fresh clone still builds a real
+edition on the first run.
 
 ```yaml
 publications:
@@ -90,9 +95,26 @@ publications:
 
 For any Substack the feed is the site plus `/feed` — that works for custom
 domains (`https://www.example.com/feed`) as well as
-`https://example.substack.com/feed`. `slug` becomes the publication's page
-filename, so pick it once. `tier` is `free` (ingested over RSS, works today) or
-`paid` (ingested from email — see the roadmap).
+`https://example.substack.com/feed`. Non-Substack feeds work too.
+
+| Field | Meaning |
+|---|---|
+| `name` | Display name, used in bylines and standing heads |
+| `slug` | URL-safe id; becomes `publications/<slug>.html`, so pick it once |
+| `feed_url` | RSS endpoint |
+| `tier` | `free` (over RSS, works today) or `paid` (over email — see the roadmap) |
+| `kind` | `newsletter` (default) or `wire`; decides which river it files into |
+| `fetch_pages` | `false` to never fetch the post page, even for an excerpt feed |
+| `homepage_url` | Optional; defaults to `feed_url` with `/feed` removed |
+
+`kind` matters once you mix a news outlet in with newsletters: pooled into one
+river and ordered by recency, an outlet that posts hourly takes every slot and a
+newsletter from three days ago never appears. The front page carries a separate
+river for each, with its own reserved slots.
+
+`fetch_pages: false` is for a publisher whose feed is clean but whose article
+pages defeat the cleaner — Democracy Now wraps its transcripts in sidebars of
+guests, topics and links — or simply one you would rather not crawl.
 
 **Check publications before you add them.** A Substack can look healthy in a
 browser and still produce nothing here — the domain may belong to something else,
@@ -309,6 +331,10 @@ after each ingest.
 | `SITE_TAGLINE` | the Debs line | Strapline under the masthead |
 | `EDITION_WINDOW_DAYS` | `7` | Days of wire an edition carries; `1` for strict daily |
 | `FRONT_PAGE_LIMIT` | `40` | Maximum stories on one front page |
+| `NEWSLETTER_RIVER_LIMIT` | `18` | Slots reserved for the newsletter river |
+| `WIRE_RIVER_LIMIT` | `22` | Slots reserved for the wire river |
+| `RIVER_PER_PUBLICATION` | `4` | Most river slots any one publication may take |
+| `MAX_ENTRIES_PER_FEED` | `25` | Newest entries taken from any one feed per ingest |
 | `REFRESH_INTERVAL_HOURS` | `6` | Scheduler interval |
 | `REQUEST_TIMEOUT` | `20` | Seconds per HTTP request |
 | `MAINSPRING_USER_AGENT` | descriptive UA | Sent on every request |

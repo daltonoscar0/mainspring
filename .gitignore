@@ -20,3 +20,8 @@ venv/
 *.swp
 .idea/
 .vscode/
+
+# Your subscription list. What you read is exactly what this project exists to
+# keep to yourself, so it stays out of the repository. Copy the example to start:
+#   cp subscriptions.example.yaml subscriptions.yaml
+subscriptions.yaml

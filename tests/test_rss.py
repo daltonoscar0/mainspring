@@ -518,14 +518,37 @@ class TestSubscriptionsConfig:
         assert len(records) == 1
         assert records[0]["word_count"] < rss.TEASER_WORD_THRESHOLD
 
-    def test_the_shipped_subscriptions_file_is_valid(self) -> None:
-        """The seed list committed to the repo must actually load."""
+    def test_the_shipped_example_file_is_valid(self) -> None:
+        """The committed example list must load — it is what a fresh clone uses.
+
+        Tested explicitly rather than through ``load_subscriptions()``, which
+        prefers a local ``subscriptions.yaml``. That file is gitignored, so on a
+        contributor's machine it holds their own publications and on CI it does
+        not exist at all; neither is what this test is about.
+        """
         from mainspring import config
 
-        subs = config.load_subscriptions()
+        subs = config.load_subscriptions(config.EXAMPLE_SUBSCRIPTIONS_PATH)
         assert len(subs) >= 4
         assert all(s.feed_url.startswith("https://") for s in subs)
         assert len({s.slug for s in subs}) == len(subs)
+        assert all(s.is_free for s in subs), "the example should work out of the box"
+
+    def test_a_missing_list_falls_back_to_the_example(self, tmp_path, monkeypatch) -> None:
+        """A fresh clone has no subscriptions.yaml and must still build something."""
+        from mainspring import config
+
+        monkeypatch.setattr(config, "SUBSCRIPTIONS_PATH", tmp_path / "absent.yaml")
+        subs = config.load_subscriptions()
+        assert subs, "expected the example list"
+        assert any(s.slug == "astral-codex-ten" for s in subs)
+
+    def test_an_explicit_path_is_never_substituted(self, tmp_path, monkeypatch) -> None:
+        """Naming a file means that file — silently using the example would lie."""
+        from mainspring import config
+
+        with pytest.raises(SubscriptionsError, match="not found"):
+            config.load_subscriptions(tmp_path / "definitely-absent.yaml")
 
 
 class TestEmailStub:
