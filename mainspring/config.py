@@ -206,8 +206,9 @@ def load_subscriptions(path: Path | str | None = None) -> list[Subscription]:
     target = Path(path) if path is not None else SUBSCRIPTIONS_PATH
     if not target.exists():
         raise SubscriptionsError(
-            f"{target} not found. Copy subscriptions.example.yaml and list the "
-            "publications you subscribe to."
+            f"{target} not found. Mainspring reads the publications you subscribe "
+            "to from subscriptions.yaml in the repository root; set "
+            "SUBSCRIPTIONS_PATH to keep it elsewhere."
         )
 
     with target.open("r", encoding="utf-8") as handle:

@@ -103,10 +103,26 @@ class Ranking:
 # Sort keys
 # ---------------------------------------------------------------------------
 
-#: Stand-in for a missing publication date when sorting newest-first. Any real
-#: date sorts above it, so undated articles fall to the bottom of the river
-#: rather than the top.
-_NO_DATE = datetime.min
+def _seconds(stamp: datetime | None) -> float:
+    """Return a sortable number of seconds for a naive datetime.
+
+    Computed from the proleptic ordinal rather than via
+    :meth:`datetime.timestamp`, which converts through local time and raises
+    ``ValueError`` for dates outside the platform's epoch range — including the
+    sentinel a missing date would otherwise need.
+
+    A missing date returns negative infinity, so undated articles sort to the
+    bottom of a newest-first list rather than the top.
+    """
+    if stamp is None:
+        return float("-inf")
+    return (
+        stamp.toordinal() * 86400.0
+        + stamp.hour * 3600
+        + stamp.minute * 60
+        + stamp.second
+        + stamp.microsecond / 1_000_000
+    )
 
 
 def _by_length(article: Any) -> tuple:
@@ -118,7 +134,7 @@ def _by_length(article: Any) -> tuple:
     """
     return (
         -int(getattr(article, "word_count", 0) or 0),
-        -(article.published_date or _NO_DATE).timestamp(),
+        -_seconds(article.published_date),
         str(article.url),
     )
 
@@ -126,7 +142,7 @@ def _by_length(article: Any) -> tuple:
 def _by_recency(article: Any) -> tuple:
     """Sort key: most recent first, then longest, then URL."""
     return (
-        -(article.published_date or _NO_DATE).timestamp(),
+        -_seconds(article.published_date),
         -int(getattr(article, "word_count", 0) or 0),
         str(article.url),
     )
@@ -290,7 +306,6 @@ def group_by_publication(articles: Sequence[Any]) -> list[tuple[str, list[Any]]]
 
     def group_key(item: tuple[str, list[Any]]) -> tuple:
         slug, group = item
-        newest = group[0].published_date or _NO_DATE
-        return (-newest.timestamp(), slug)
+        return (-_seconds(group[0].published_date), slug)
 
     return sorted(grouped.items(), key=group_key)

@@ -311,7 +311,15 @@ def _unique_slug(db: Session, publication_id: int, slug: str, url: str) -> str:
     appended until the ``(publication_id, slug)`` pair is unused. Only URLs
     differing from ``url`` count as collisions, so re-ingesting a post keeps the
     slug it already has.
+
+    The session flushes first. Sessions here are created with ``autoflush=False``
+    and a whole feed is upserted before a single commit, so without the flush a
+    collision between two entries of the same feed would be invisible here and
+    would instead surface as an IntegrityError at commit — losing the entire
+    batch rather than renaming one page.
     """
+    db.flush()
+
     candidate = slug
     suffix = 2
     while True:
@@ -340,6 +348,9 @@ def upsert_article(db: Session, publication: Publication, record: dict) -> str:
 
     The caller is responsible for committing.
     """
+    # Flush so rows added earlier in this batch are visible to the lookup — the
+    # session does not autoflush. See _unique_slug for why that matters.
+    db.flush()
     existing = db.query(Article).filter(Article.url == record["url"]).first()
 
     if existing is None:
@@ -457,7 +468,15 @@ def ingest(
                     report.skipped += 1
                     continue
                 setattr(report, action, getattr(report, action) + 1)
-            db.commit()
+
+            try:
+                db.commit()
+            except Exception as exc:  # noqa: BLE001 — one feed's batch, not the run
+                logger.error("%s: could not commit batch: %s", sub.name, exc)
+                db.rollback()
+                report.errors.append(f"{sub.name}: commit failed: {exc}")
+                continue
+
             logger.info("%s: %d entries processed", sub.name, len(outcome))
     finally:
         db.close()
