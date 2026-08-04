@@ -299,6 +299,94 @@ class TestRiver:
         assert rank.group_by_publication([]) == []
 
 
+class TestRiverCap:
+    """A high-volume publication must not take the whole river."""
+
+    @pytest.fixture
+    def lopsided(self) -> list[FakeArticle]:
+        """One wire service posting constantly, three newsletters posting once."""
+        wire = [
+            FakeArticle(f"https://wire.example/p/{i}", "wire", 500, "2026-08-04")
+            for i in range(30)
+        ]
+        others = [
+            FakeArticle(f"https://{slug}.example/p/x", slug, 400, "2026-08-03")
+            for slug in ("alpha", "beta", "gamma")
+        ]
+        return wire + others
+
+    def test_uncapped_the_wire_dominates(self, lopsided) -> None:
+        """Establishes the problem the cap exists to solve."""
+        river = rank.rank_articles(lopsided, lead_history={}).river
+        slugs = [rank.publication_slug(a) for a in river]
+        assert slugs.count("wire") > 20
+
+    def test_the_cap_limits_each_publication(self, lopsided) -> None:
+        river = rank.rank_articles(
+            lopsided, lead_history={}, per_publication=4
+        ).river
+        counts: dict[str, int] = {}
+        for article in river:
+            slug = rank.publication_slug(article)
+            counts[slug] = counts.get(slug, 0) + 1
+        assert all(count <= 4 for count in counts.values()), counts
+
+    def test_the_cap_keeps_the_most_recent_items(self) -> None:
+        articles = [
+            FakeArticle("https://w.example/p/new", "wire", 100, "2026-08-04"),
+            FakeArticle("https://w.example/p/mid", "wire", 100, "2026-08-03"),
+            FakeArticle("https://w.example/p/old", "wire", 100, "2026-08-01"),
+            FakeArticle("https://a.example/p/x", "alpha", 900, "2026-08-04"),
+        ]
+        river = rank.rank_articles(
+            articles, lead_history={}, secondary_count=0, per_publication=2
+        ).river
+        urls = [a.url for a in river]
+        assert "https://w.example/p/old" not in urls
+        assert "https://w.example/p/new" in urls
+
+    def test_the_cap_preserves_recency_order(self, lopsided) -> None:
+        river = rank.rank_articles(
+            lopsided, lead_history={}, per_publication=3
+        ).river
+        dates = [a.published_date or datetime.min for a in river]
+        assert dates == sorted(dates, reverse=True)
+
+    def test_smaller_publications_are_not_crowded_out(self, lopsided) -> None:
+        """The point of the cap: every publication still reaches the page.
+
+        Asserted over the whole page rather than the river alone — a small
+        publication landing in a headline slot is the outcome working, not
+        failing.
+        """
+        ranking = rank.rank_articles(
+            lopsided, lead_history={}, per_publication=4, limit=12
+        )
+        placed = {rank.publication_slug(a) for a in ranking.all_articles}
+        assert placed == {"wire", "alpha", "beta", "gamma"}
+
+        # And the wire holds no more than its share: 4 river slots plus at most
+        # one headline slot.
+        wire_count = sum(
+            1 for a in ranking.all_articles if rank.publication_slug(a) == "wire"
+        )
+        assert wire_count <= 5, wire_count
+
+    def test_none_and_zero_disable_the_cap(self, lopsided) -> None:
+        uncapped = rank.rank_articles(lopsided, lead_history={}).river
+        assert len(rank.rank_articles(lopsided, lead_history={}, per_publication=None).river) == len(uncapped)
+        assert len(rank.rank_articles(lopsided, lead_history={}, per_publication=0).river) == len(uncapped)
+
+    def test_the_cap_applies_in_a_real_build(self, dataset, tmp_path, monkeypatch) -> None:
+        monkeypatch.setattr(sitegen.config, "RIVER_PER_PUBLICATION", 1)
+        site_dir = tmp_path / "capped"
+        sitegen.build_site(dataset, site_dir=site_dir)
+        html = read(site_dir, "index.html")
+        # One river slot per publication means at most one item under each
+        # standing head.
+        assert html.count('class="river__item"') <= html.count('class="standing-head"')
+
+
 class TestPublicationSlug:
     """Ranking must read a slug off an ORM object or a plain one."""
 

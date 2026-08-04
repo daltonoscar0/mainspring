@@ -405,3 +405,92 @@ exit 0.
 The lesson worth keeping: the original seed check verified that feeds *resolved*
 and carried full text, but not that they were *alive*. Length and reachability
 are not liveness.
+
+---
+
+## Follow-up: adding the 1.x news outlets
+
+The fourteen outlets from `the_mainspring` 1.x were added alongside the Substacks.
+They are conventional news sites, and the request exposed several things the
+Substack-only build had never been tested against. This section records what
+broke and why the fixes are shaped the way they are.
+
+**Result: 13 of 14 added.** The Nation is genuinely paywalled — its feed carries
+32 words and its post page cleans to 9 — so it is declared `tier: paid` and waits
+on email ingestion. It sits in the directory rather than silently absent.
+
+**`check_feeds.py` was diagnosing teaser feeds wrongly.** It reported "teasers
+only → add as tier: paid" for In These Times, Truthout, Portside and Dissent —
+all four of which are free publications that simply put excerpts in RSS, and all
+four of which Mainspring handles by fetching the post page. The checker evaluated
+feed bodies only and never exercised the fallback it was implicitly judging. It
+now fetches one post before declaring a verdict, which distinguishes "free, at
+one extra request per post" from "paywalled, no full text to be had". The three
+verdicts are now meaningfully different rather than one wrong one.
+
+**Feed-URL normalization was mangling non-Substack feeds.** `?post_type=article`
+and `democracynow.rss` were being turned into `.../feed`. The test now runs
+against the URL *path* rather than the whole string, and any query string is
+taken as evidence the publisher meant that exact URL.
+
+**Chrome removal ran after container selection, which is backwards.** On a news
+site the outer `<article>` typically wraps the body plus a donation appeal, a
+republication notice and a related-stories rail — so selecting first handed
+Truthout's fundraising pitch to the summarizer as the lede. `strip_chrome` is now
+a separate function applied to the whole document *before* a body container is
+chosen. That one reordering fixed Truthout, Portside and Dissent at once, and is
+the single highest-value change here.
+
+**A bare `newsletter` pattern deleted every Substack post.** Added to the chrome
+denylist, it matched Substack's own `newsletter-post` article wrapper and the
+whole article was decomposed — caught immediately by the fixture test, but it
+would have been catastrophic and silent in production. Two responses:
+
+  * Every added pattern is now qualified (`newsletter-signup`, `donate-`,
+    `[-_]modal`) rather than a bare word.
+  * More importantly, `strip_chrome` now **spares any element holding more than
+    40% of the document's text**. Furniture is small; the article is not. Any
+    denylist accumulates over-matches, and this converts that failure mode from
+    silent data loss into a no-op. There is an absolute floor
+    (`_CHROME_GUARD_MIN_TEXT`) so a fragment that is *only* a subscribe widget is
+    still removed.
+
+**Body-container selectors needed id forms.** Democracy Now identifies its body
+with `id="story_text"`, and a class-only selector list fell through to `<main>`
+and swallowed the site navigation. Diagnosing this cost an embarrassing detour: an
+earlier scan printed `class or id` and the id was misread as a class.
+
+**A link-density check was added and did not solve the case that motivated it.**
+Containers whose text is more than half anchor text are rejected as navigation.
+This is a sound, site-agnostic heuristic and is kept — but it did not fix
+Democracy Now's transcript pages, where a sidebar of guests and links is a
+*prefix* of several thousand words of transcript, so overall density stays low.
+Recorded because the negative result is the useful part.
+
+**`fetch_pages: false` was added per publication, and Democracy Now uses it.**
+After three attempts at extracting its transcript pages, the better answer was to
+stop trying: its *feed* carries clean 180-word summaries, which are better copy
+than anything extractable from the page. A per-publication switch is also the
+polite setting for any publisher one would rather not crawl. Implemented on
+`Subscription` only, with no model column, so it needs no migration.
+
+**Two limits were added because 13 news outlets are not 13 newsletters.**
+
+  * `MAX_ENTRIES_PER_FEED` (25). Truthout and Portside ship 100 entries. On an
+    excerpt feed each entry costs a page fetch, so an uncapped ingest would make
+    200 requests to two publishers in one run. Feeds are newest-first, so the cap
+    defers older items to the archive rather than losing them.
+  * `RIVER_PER_PUBLICATION` (4). A wire service posting hourly took every river
+    slot and pushed the newsletters off the page entirely. The lead rotation
+    already guaranteed a spread across headlines; this does the same below them.
+    Verified by a test that first asserts the *unfixed* behaviour, so the cap
+    cannot be quietly removed.
+
+**Known limitation, not fixed.** With 13 high-volume outlets and 8 weekly
+newsletters in one file, the river is dominated by whatever posted most recently,
+which is almost always news. The cap prevents any single outlet monopolising it
+but cannot manufacture slots — 13 desks × 4 fills the 40-story front page before
+a newsletter that posted three days ago is reached. Options, in increasing order
+of work: raise `FRONT_PAGE_LIMIT`, lower `RIVER_PER_PUBLICATION` to 2 so more
+desks fit, or give the front page two rivers — a wire section and a newsletters
+section. The third is the real answer and is not built.

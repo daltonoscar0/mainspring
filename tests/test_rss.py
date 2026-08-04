@@ -119,6 +119,36 @@ class TestParseFeed:
         records = rss.parse_feed(subscription, feed_source=feed, allow_fetch=False)
         assert records == []
 
+    def test_entries_are_capped_per_feed(self, subscription, monkeypatch) -> None:
+        """An excerpt feed with 100 entries would otherwise cost 100 page fetches."""
+        from mainspring import config as cfg
+
+        monkeypatch.setattr(cfg, "MAX_ENTRIES_PER_FEED", 2)
+        items = "".join(
+            f"<item><title>Post {i}</title><link>https://x.example/p/{i}</link>"
+            f"<description>{'word ' * 200}</description></item>"
+            for i in range(10)
+        )
+        feed = f'<?xml version="1.0"?><rss version="2.0"><channel>{items}</channel></rss>'
+        records = rss.parse_feed(subscription, feed_source=feed, allow_fetch=False)
+        assert len(records) == 2
+
+    def test_the_cap_keeps_the_newest_entries(self, subscription, monkeypatch) -> None:
+        """Feeds are newest-first, so the cap must not drop today's news."""
+        from mainspring import config as cfg
+
+        monkeypatch.setattr(cfg, "MAX_ENTRIES_PER_FEED", 1)
+        feed = (
+            '<?xml version="1.0"?><rss version="2.0"><channel>'
+            f'<item><title>Newest</title><link>https://x.example/p/new</link>'
+            f'<description>{"word " * 200}</description></item>'
+            f'<item><title>Older</title><link>https://x.example/p/old</link>'
+            f'<description>{"word " * 200}</description></item>'
+            "</channel></rss>"
+        )
+        records = rss.parse_feed(subscription, feed_source=feed, allow_fetch=False)
+        assert [r["title"] for r in records] == ["Newest"]
+
     def test_unparseable_feed_raises(self, subscription) -> None:
         with pytest.raises(ValueError, match="unparseable feed"):
             rss.parse_feed(subscription, feed_source="<<< not xml", allow_fetch=False)
@@ -435,6 +465,58 @@ class TestSubscriptionsConfig:
                     ]
                 }
             )
+
+    def test_fetch_pages_defaults_to_true_and_accepts_false(self) -> None:
+        subs = parse_subscriptions(
+            {
+                "publications": [
+                    {"name": "A", "slug": "a", "feed_url": "https://a.example/feed"},
+                    {
+                        "name": "B",
+                        "slug": "b",
+                        "feed_url": "https://b.example/feed",
+                        "fetch_pages": False,
+                    },
+                ]
+            }
+        )
+        assert [s.fetch_pages for s in subs] == [True, False]
+
+    def test_non_boolean_fetch_pages_is_rejected(self) -> None:
+        with pytest.raises(SubscriptionsError, match="non-boolean fetch_pages"):
+            parse_subscriptions(
+                {
+                    "publications": [
+                        {
+                            "name": "A",
+                            "slug": "a",
+                            "feed_url": "https://a.example/feed",
+                            "fetch_pages": "no",
+                        }
+                    ]
+                }
+            )
+
+    def test_fetch_pages_false_keeps_a_teaser_instead_of_fetching(self) -> None:
+        """The publication's own switch must hold even when the run allows fetching.
+
+        The network is blocked by an autouse fixture, so a fetch attempt here
+        fails the test outright — which is exactly the assertion.
+        """
+        sub = Subscription(
+            name="Feed Only",
+            slug="feed-only",
+            feed_url="https://f.example/feed",
+            fetch_pages=False,
+        )
+        feed = """<?xml version="1.0"?><rss version="2.0"><channel>
+        <item><title>Teaser</title><link>https://f.example/p/a</link>
+        <description>A short teaser paragraph that is well under the threshold at
+        which the ingester would normally go and fetch the post page.</description>
+        </item></channel></rss>"""
+        records = rss.parse_feed(sub, feed_source=feed, allow_fetch=True)
+        assert len(records) == 1
+        assert records[0]["word_count"] < rss.TEASER_WORD_THRESHOLD
 
     def test_the_shipped_subscriptions_file_is_valid(self) -> None:
         """The seed list committed to the repo must actually load."""

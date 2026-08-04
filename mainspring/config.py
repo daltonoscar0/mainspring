@@ -68,6 +68,22 @@ FRONT_PAGE_LIMIT = int(os.environ.get("FRONT_PAGE_LIMIT", "40"))
 #: honest but usually thin.
 EDITION_WINDOW_DAYS = max(1, int(os.environ.get("EDITION_WINDOW_DAYS", "7")))
 
+#: Newest entries to take from any one feed per ingest.
+#:
+#: Substack feeds carry 20. News sites carry far more — Truthout and Portside
+#: ship 100 — and when a feed holds only excerpts each entry costs a separate
+#: page fetch, so an uncapped ingest would make hundreds of requests to a single
+#: publisher. Feeds are newest-first, so the cap simply means older items wait
+#: for the archive rather than being lost.
+MAX_ENTRIES_PER_FEED = int(os.environ.get("MAX_ENTRIES_PER_FEED", "25"))
+
+#: Most river slots any one publication may occupy on a front page.
+#:
+#: Without this, a publication that posts hourly takes every slot and the rest of
+#: the paper disappears. The lead rotation already guarantees a spread across
+#: headlines; this does the same for the river.
+RIVER_PER_PUBLICATION = int(os.environ.get("RIVER_PER_PUBLICATION", "4"))
+
 #: Descriptive User-Agent so publications can identify (and contact) the bot.
 USER_AGENT = os.environ.get(
     "MAINSPRING_USER_AGENT",
@@ -105,6 +121,14 @@ class Subscription:
         tier:          ``free`` (ingested by RSS) or ``paid`` (ingested by email
                        in Milestone 2; skipped by the RSS ingester today).
         homepage_url:  Public home page, linked from the publication page.
+        fetch_pages:   Whether a teaser entry may trigger a fetch of the post
+                       page. Set ``false`` for a publication whose feed is clean
+                       but whose page layout defeats the cleaner — Democracy
+                       Now's transcript pages wrap the article in sidebars of
+                       guests, topics and links, and its 180-word feed summaries
+                       are better copy than anything extractable from the page.
+                       Also the polite setting for a publisher you would rather
+                       not crawl.
     """
 
     name: str
@@ -112,6 +136,7 @@ class Subscription:
     feed_url: str
     tier: Tier = "free"
     homepage_url: str = ""
+    fetch_pages: bool = True
 
     @property
     def is_free(self) -> bool:
@@ -172,6 +197,12 @@ def parse_subscriptions(raw: object, *, source: str = "<memory>") -> list[Subscr
         if tier not in ("free", "paid"):
             raise SubscriptionsError(f"{where} has invalid tier {tier!r} (use free or paid)")
 
+        fetch_pages = entry.get("fetch_pages", True)
+        if not isinstance(fetch_pages, bool):
+            raise SubscriptionsError(
+                f"{where} has non-boolean fetch_pages {fetch_pages!r} (use true or false)"
+            )
+
         slug = entry["slug"].strip()
         if slug in seen:
             raise SubscriptionsError(f"{where} reuses slug {slug!r}")
@@ -185,6 +216,7 @@ def parse_subscriptions(raw: object, *, source: str = "<memory>") -> list[Subscr
                 feed_url=feed_url,
                 tier=tier,
                 homepage_url=(entry.get("homepage_url") or _homepage_from_feed(feed_url)).strip(),
+                fetch_pages=fetch_pages,
             )
         )
 

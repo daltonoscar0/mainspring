@@ -477,6 +477,7 @@ def build_site(
             window,
             fresh=fresh,
             lead_history=lead_history,
+            per_publication=config.RIVER_PER_PUBLICATION,
             limit=config.FRONT_PAGE_LIMIT,
         )
         rankings[date_iso] = ranking

@@ -29,11 +29,14 @@ What is kept:
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup, NavigableString, Tag
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Allowlists
@@ -108,10 +111,56 @@ _CHROME_CLASS_RE = re.compile(
     r"recommendation|footer-wrap|email-footer|post-footer|meta-footer|"
     r"unsubscribe|preferences-link|"
     r"button-wrapper|pencraft-button|"
-    r"tracking-pixel|beacon"
+    r"tracking-pixel|beacon|"
+    # Non-Substack news furniture. These sites fund themselves with appeals and
+    # syndicate under licences, and both live inside the article element — so
+    # without these the summarizer reads a donation pitch as the lede.
+    # Each of these is deliberately qualified rather than a bare word. A bare
+    # "newsletter" matched Substack's own `newsletter-post` article wrapper and
+    # deleted every post; the size guard in strip_chrome now catches that class
+    # of mistake, but the patterns should not rely on it.
+    r"donat(?:e|ion)[-_]|[-_]donat(?:e|ion)|fundrais|support-us|"
+    r"membership[-_]|pledge[-_]|"
+    r"republish|reprint[-_]|copyright-notice|disclaimer|"
+    r"newsletter[-_](?:signup|sign-up|form|cta|widget|box|prompt|banner)|"
+    r"(?:email|newsletter)[-_]capture|signup[-_]|sign-up[-_]|"
+    r"breadcrumb|site-nav|main-nav|nav-menu|menu-toggle|skip-link|"
+    r"related-(?:post|stori|articl)|more-from|read-next|recirc|"
+    r"author-bio|contributor-bio|byline-bio|"
+    r"tag-list|topic-list|category-list|"
+    r"letter-to-the-editor|"
+    r"lightbox|offcanvas|[-_]modal|modal[-_]"
     r")",
     re.IGNORECASE,
 )
+
+#: A "chrome" element holding at least this share of the document's text is not
+#: chrome — the pattern misfired. Furniture is small; the article is not.
+_CHROME_MAX_TEXT_SHARE = 0.4
+
+#: Below this much total text the share guard is meaningless and is skipped. A
+#: fragment consisting only of a subscribe widget holds 100% of its own text and
+#: must still be removed.
+_CHROME_GUARD_MIN_TEXT = 400
+
+#: Reject a candidate body container whose text is more than this proportion
+#: anchor text.
+#:
+#: Prose is mostly words; navigation, "related stories" rails and link indexes are
+#: mostly links. Democracy Now's transcript pages are the case that motivated
+#: this — a sidebar of guests, topics and links matched a body selector and gave
+#: the summarizer "Related / Topics / Guests / Links / Transcript" as an article.
+#: Site-agnostic, so it protects against layouts nobody has looked at yet.
+_MAX_LINK_TEXT_SHARE = 0.5
+
+
+def _link_share(container: Tag) -> float:
+    """Return the proportion of a container's text that sits inside links."""
+    total = len(container.get_text(strip=True))
+    if not total:
+        return 1.0
+    linked = sum(len(a.get_text(strip=True)) for a in container.find_all("a"))
+    return linked / total
 
 #: Link targets that mean the anchor is a call to action, not a citation.
 _CHROME_HREF_RE = re.compile(
@@ -137,15 +186,46 @@ _CHROME_LINK_TEXT = frozenset(
     }
 )
 
-#: Selectors for the container holding a Substack post's body, most specific
-#: first. ``.available-content`` is what a free (or unlocked) post uses;
-#: ``.body.markup`` is the inner markup wrapper; the rest are fallbacks for
-#: older markup and for non-Substack feeds.
+#: Selectors for the container holding a post's body, most specific first.
+#:
+#: The first four are Substack: ``.available-content`` is what a free (or
+#: unlocked) post uses and ``.body.markup`` is the inner wrapper. The rest cover
+#: the news CMSs people actually point Mainspring at — WordPress, Drupal, and a
+#: few hand-rolled ones — because a self-hosted reader should not refuse to read
+#: anything that is not a Substack.
+#:
+#: Order matters and specificity wins: a generic ``article`` or ``main`` on a news
+#: site frequently wraps the body *plus* donation appeals, republication notices
+#: and a related-stories rail, so those two sit last.
 _BODY_SELECTORS: tuple[str, ...] = (
+    # Substack
     "div.available-content",
     "div.body.markup",
-    "div.post-content",
     "div.markup",
+    # Semantic standard, when a publisher bothers
+    "[itemprop='articleBody']",
+    # Common CMS body wrappers
+    "div.entry-content",
+    "div.post-content",
+    "div.article-body",
+    "div.article__body",
+    "div.article-content",
+    "div.ar__con",             # Truthout
+    "div.story-body",
+    "div.post-body",
+    "div.field--name-body",    # Drupal
+    "div.node__content",       # Drupal
+    # Id-form equivalents. Older CMSs identify the body by id rather than class,
+    # and a selector list that only looks at classes silently falls through to
+    # <main> and swallows the site navigation.
+    "#story_text",             # Democracy Now
+    "#article-body",
+    "#articleBody",
+    "#post-content",
+    "#entry-content",
+    "#story",
+    "#main-content",
+    # Last resorts, which over-capture on many news sites
     "article",
     "main",
     "[role='main']",
@@ -249,19 +329,60 @@ def _best_image_src(tag: Tag, base_url: str) -> str | None:
     return None
 
 
-def _sanitize(root: Tag, base_url: str) -> None:
-    """Strip chrome and non-allowlisted markup from ``root``, in place."""
-    # Pass 1 — delete whole subtrees: banned tags, then anything that looks like
-    # furniture. Done before unwrapping so that a chrome <div> takes its
-    # children with it rather than leaking a "Subscribe now" paragraph.
+def strip_chrome(root: Tag) -> None:
+    """Delete banned tags and furniture subtrees from ``root``, in place.
+
+    Split out from :func:`_sanitize` so a full page can be de-chromed *before* a
+    body container is chosen. That ordering matters more than it looks: on a news
+    site the outer ``<article>`` often wraps the body plus a donation appeal, a
+    republication notice and a related-stories rail, so choosing the container
+    first and cleaning second hands the summarizer a fundraising pitch as the
+    lede. Cleaning first shrinks those wrappers to their actual content and lets
+    container selection work on markup that is already honest.
+
+    Subtrees are removed whole, so a chrome ``<div>`` takes its children with it
+    rather than leaking a stray "Subscribe now" paragraph.
+
+    One safeguard makes this safe to extend: an element matching a chrome pattern
+    is spared if it holds more than :data:`_CHROME_MAX_TEXT_SHARE` of the
+    document's text. Furniture is small. Anything holding most of the page is the
+    article, and the pattern misfired — which is exactly what happened when a
+    bare ``newsletter`` pattern met Substack's ``newsletter-post`` wrapper and
+    silently deleted every post. Any denylist accumulates that mistake; this
+    turns it from data loss into a no-op.
+    """
     for tag in root.find_all(list(DROP_TAGS)):
         tag.decompose()
+
+    total_text = len(root.get_text(strip=True))
+    budget = (
+        total_text * _CHROME_MAX_TEXT_SHARE
+        if total_text >= _CHROME_GUARD_MIN_TEXT
+        else 0
+    )
 
     for tag in root.find_all(True):
         if tag.decomposed:
             continue
-        if _is_chrome(tag):
-            tag.decompose()
+        if not _is_chrome(tag):
+            continue
+        if budget and len(tag.get_text(strip=True)) > budget:
+            logger.debug(
+                "Sparing <%s class=%r> from chrome removal: holds %d of %d chars",
+                tag.name,
+                tag.get("class"),
+                len(tag.get_text(strip=True)),
+                total_text,
+            )
+            continue
+        tag.decompose()
+
+
+def _sanitize(root: Tag, base_url: str) -> None:
+    """Strip chrome and non-allowlisted markup from ``root``, in place."""
+    # Pass 1 — remove banned tags and furniture. Idempotent, so it costs nothing
+    # when extract_post_body has already run it over the whole document.
+    strip_chrome(root)
 
     # Pass 2 — images: resolve URLs, drop pixels, normalize attributes.
     for img in root.find_all("img"):
@@ -425,6 +546,10 @@ def extract_post_body(page_html: str, *, base_url: str = "") -> CleanedBody:
     Used by the RSS ingester's fallback path, when a feed entry carried only a
     teaser and the post itself has to be fetched.
 
+    Chrome is stripped from the whole document *before* a container is chosen —
+    see :func:`strip_chrome` for why that ordering is what makes non-Substack
+    sites work.
+
     Args:
         page_html: The complete HTML document from the post URL.
         base_url:  The post URL, for resolving relative references.
@@ -437,13 +562,30 @@ def extract_post_body(page_html: str, *, base_url: str = "") -> CleanedBody:
         return CleanedBody("", "", None, None, 0)
 
     soup = BeautifulSoup(page_html, "lxml")
-    for selector in _BODY_SELECTORS:
-        container = soup.select_one(selector)
-        if container and len(container.get_text(strip=True)) > 200:
-            return clean_body_html(container.decode_contents(), base_url=base_url)
+    root = soup.body or soup
+    strip_chrome(root)
 
-    body = soup.body
-    return clean_body_html(body.decode_contents() if body else page_html, base_url=base_url)
+    best: Tag | None = None
+    for selector in _BODY_SELECTORS:
+        container = root.select_one(selector)
+        if container is None or len(container.get_text(strip=True)) <= 200:
+            continue
+        share = _link_share(container)
+        if share > _MAX_LINK_TEXT_SHARE:
+            # Mostly links: a nav block or a related-stories rail, not an article.
+            logger.debug(
+                "Rejecting %r as body container: %.0f%% of its text is links",
+                selector,
+                share * 100,
+            )
+            # Remember it anyway — if nothing better turns up it still beats
+            # handing back the entire document.
+            best = best or container
+            continue
+        return clean_body_html(container.decode_contents(), base_url=base_url)
+
+    target = best if best is not None else root
+    return clean_body_html(target.decode_contents(), base_url=base_url)
 
 
 def slug_from_url(url: str) -> str:

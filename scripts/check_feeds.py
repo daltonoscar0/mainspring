@@ -78,6 +78,9 @@ class Result:
     entries: int = 0
     median_words: int = 0
     full_text_entries: int = 0
+    #: Word count from fetching one post page, when the feed carried only a
+    #: teaser and the fallback was probed. None if it was never needed.
+    fetched_words: int | None = None
     latest: str = ""
     age_days: int | None = None
     stale: bool = False
@@ -95,27 +98,49 @@ class Result:
         return self.ok or self.tier == "paid" or self.stale
 
 
+#: A URL *path* already pointing at a feed, so ``/feed`` must not be appended.
+#: Matched against the path only, never the whole URL — non-Substack publishers
+#: hang query strings off their feeds (``/feed/?post_type=article``,
+#: ``/feed/?rss``) and testing the full string would miss those and produce
+#: ``/feed/?post_type=article/feed``.
+_FEED_PATH = re.compile(
+    r"(?:/feed/?$|/rss/?$|/atom/?$|/feeds?/\w+/?$|\.rss$|\.xml$|\.atom$)",
+    re.IGNORECASE,
+)
+
+
 def normalize(candidate: str) -> str:
     """Turn whatever the user typed into a feed URL.
 
     Accepts a full feed URL, a bare domain, or a Substack handle::
 
-        https://www.example.com/feed  ->  unchanged
-        www.example.com               ->  https://www.example.com/feed
-        example.substack.com          ->  https://example.substack.com/feed
-        example                       ->  https://example.substack.com/feed
+        https://www.example.com/feed             ->  unchanged
+        https://x.org/thing.rss                  ->  unchanged
+        https://x.org/feed/?post_type=article    ->  unchanged
+        www.example.com                          ->  https://www.example.com/feed
+        example.substack.com                     ->  https://example.substack.com/feed
+        example                                  ->  https://example.substack.com/feed
+
+    ``/feed`` is only appended when the URL does not already look like a feed —
+    a WordPress site with a query string, or a path ending ``.rss``, is left
+    alone.
     """
-    text = candidate.strip().rstrip("/")
+    text = candidate.strip()
     if not text:
         return ""
 
     if not text.startswith(("http://", "https://")):
         # A bare word with no dot is a Substack handle.
-        text = f"https://{text}.substack.com" if "." not in text else f"https://{text}"
+        bare = text.rstrip("/")
+        text = f"https://{bare}.substack.com" if "." not in bare else f"https://{bare}"
 
-    if not urlparse(text).path.endswith("/feed"):
-        text = f"{text}/feed"
-    return text
+    parsed = urlparse(text)
+    if _FEED_PATH.search(parsed.path) or parsed.query:
+        # A path that already names a feed, or any query string at all — a
+        # publisher who bothered to write one is pointing at something specific.
+        return text
+
+    return f"{text.rstrip('/')}/feed"
 
 
 def slug_for(title: str, feed_url: str) -> str:
@@ -142,6 +167,66 @@ def _age_in_days(entry: object) -> int | None:
         return None
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     return max(0, (now - published).days)
+
+
+def _probe_fallback(result: Result, entry: object, *, timeout: int) -> Result:
+    """Decide what a teaser-only feed actually means, by fetching one post.
+
+    Many free publications — most non-Substack news sites — put an excerpt in
+    RSS and the article on the page. The ingester handles that: below
+    ``TEASER_WORD_THRESHOLD`` it fetches the post URL and runs the cleaner over
+    it. So a teaser feed is only a problem if that fetch also fails, which is
+    what a paywall looks like.
+
+    Fetches exactly one post — enough to tell the two apart without hammering
+    anyone. Mutates and returns ``result``.
+    """
+    url = str(getattr(entry, "link", "") or "").strip()
+    if not url:
+        result.ok = False
+        result.tier = "paid"
+        result.verdict = "teasers only, no post URL to fall back to"
+        return result
+
+    try:
+        response = requests.get(
+            url,
+            headers={"User-Agent": config.USER_AGENT},
+            timeout=timeout,
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        result.ok = False
+        result.tier = "paid"
+        result.verdict = "teasers only, post page unreachable"
+        result.note = f"Could not fetch {url} to test the fallback ({type(exc).__name__})."
+        return result
+
+    from mainspring.ingest.substack_html import extract_post_body
+
+    body = extract_post_body(response.text, base_url=url)
+    result.fetched_words = body.word_count
+
+    if body.word_count >= TEASER_WORD_THRESHOLD:
+        result.verdict = "full text by fetching the post"
+        result.note = (
+            f"The feed carries excerpts (median {result.median_words} words), but "
+            f"the post page cleans to {body.word_count:,} words, so Mainspring will "
+            "fetch it. Usable as tier: free, at one extra request per post — "
+            "slower ingests than a Substack, and more load on the publisher."
+        )
+    else:
+        result.ok = False
+        result.tier = "paid"
+        result.verdict = "teasers only"
+        result.note = (
+            f"The feed carries {result.median_words} words and the post page only "
+            f"cleans to {body.word_count}, so there is no full text to be had. "
+            "That is what a paywall looks like. Add as tier: paid if you subscribe "
+            "— email ingestion will reach it."
+        )
+    return result
 
 
 def check(candidate: str, *, timeout: int) -> Result:
@@ -248,14 +333,11 @@ def check(candidate: str, *, timeout: int) -> Result:
             )
         )
     elif full_text == 0:
-        result.ok = False
-        result.tier = "paid"
-        result.verdict = "teasers only"
-        result.note = (
-            "Every sampled post cleaned down to a teaser, which is what a paid "
-            "publication's feed looks like. Add it as tier: paid — it will be "
-            "picked up once email ingestion lands."
-        )
+        # A teaser feed is not the end of it: the ingester falls back to fetching
+        # the post page. Whether that works is the difference between "free, at
+        # the cost of one extra request per post" and "paid, wait for email
+        # ingestion" — so actually try it rather than guess from the feed.
+        result = _probe_fallback(result, parsed.entries[0], timeout=timeout)
     elif full_text < len(word_counts) / 2:
         result.verdict = "mostly teasers"
         result.note = (

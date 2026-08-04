@@ -268,14 +268,30 @@ def parse_feed(
     if parsed.bozo and not parsed.entries:
         raise ValueError(f"{subscription.name}: unparseable feed ({parsed.bozo_exception})")
 
+    # Newest first, capped: see config.MAX_ENTRIES_PER_FEED. Uncapped, a
+    # 100-entry excerpt feed costs 100 page fetches against one publisher.
+    entries = parsed.entries[: config.MAX_ENTRIES_PER_FEED]
+    if len(parsed.entries) > len(entries):
+        logger.info(
+            "%s: feed carries %d entries, taking the newest %d",
+            subscription.name,
+            len(parsed.entries),
+            len(entries),
+        )
+
     records: list[dict] = []
-    for entry in parsed.entries:
+    for entry in entries:
         url = str(getattr(entry, "link", "") or "").strip()
         if not url:
             continue
 
         title = str(getattr(entry, "title", "") or "").strip() or "Untitled"
-        body = _resolve_body(_entry_body_html(entry), url, allow_fetch=allow_fetch)
+        # Both switches must be on: the run-wide one and the publication's own.
+        body = _resolve_body(
+            _entry_body_html(entry),
+            url,
+            allow_fetch=allow_fetch and subscription.fetch_pages,
+        )
         if body.is_empty:
             logger.debug("%s: no usable body for %s", subscription.name, url)
             continue

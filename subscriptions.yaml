@@ -73,6 +73,94 @@ publications:
     feed_url: https://www.thefp.com/feed
     tier: free
 
+  # --- The wire -----------------------------------------------------------
+  # Carried over from the_mainspring 1.x. These are conventional news sites, not
+  # Substacks. Two consequences worth knowing:
+  #
+  #   * The four marked "excerpt feed" put only a summary in RSS, so Mainspring
+  #     fetches each post page. That is slower and puts real load on the
+  #     publisher — MAX_ENTRIES_PER_FEED bounds it.
+  #   * They post many times a day, where a newsletter posts weekly. Without
+  #     RIVER_PER_PUBLICATION they would fill the front page and crowd the
+  #     newsletters out entirely.
+  - name: Jacobin
+    slug: jacobin
+    feed_url: https://jacobin.com/feed
+    tier: free
+
+  - name: The Intercept
+    slug: the-intercept
+    feed_url: https://theintercept.com/feed/?rss
+    tier: free
+
+  # Feed-only. Democracy Now's transcript pages wrap the article in sidebars of
+  # guests, topics and links that defeat the cleaner — the extracted "body" comes
+  # out as "Related / Topics / Guests / Links / Transcript". Its feed summaries
+  # are clean prose and make better copy, so the page is never fetched.
+  - name: Democracy Now
+    slug: democracy-now
+    feed_url: https://www.democracynow.org/democracynow.rss
+    tier: free
+    fetch_pages: false
+
+  - name: Current Affairs
+    slug: current-affairs
+    feed_url: https://www.currentaffairs.org/news/rss.xml
+    tier: free
+
+  - name: In These Times
+    slug: in-these-times
+    feed_url: https://inthesetimes.com/feed
+    tier: free            # excerpt feed — post pages are fetched
+
+  - name: Truthout
+    slug: truthout
+    feed_url: https://truthout.org/feed/
+    tier: free            # excerpt feed — post pages are fetched
+
+  - name: Common Dreams
+    slug: common-dreams
+    feed_url: https://www.commondreams.org/rss.xml
+    tier: free
+
+  - name: Mother Jones
+    slug: mother-jones
+    feed_url: https://www.motherjones.com/feed/
+    tier: free
+
+  - name: CounterPunch
+    slug: counterpunch
+    feed_url: https://www.counterpunch.org/feed/
+    tier: free
+
+  - name: People's World
+    slug: peoples-world
+    feed_url: https://www.peoplesworld.org/feed/?post_type=article
+    tier: free
+
+  - name: Labor Notes
+    slug: labor-notes
+    feed_url: https://www.labornotes.org/rss.xml
+    tier: free
+
+  - name: Portside
+    slug: portside
+    feed_url: https://portside.org/rss.xml
+    tier: free            # excerpt feed — post pages are fetched
+
+  - name: Dissent Magazine
+    slug: dissent-magazine
+    feed_url: https://dissentmagazine.org/feed/
+    tier: free            # excerpt feed — post pages are fetched
+
+  # Paywalled: the feed carries 32 words and the post page cleans to 9, so there
+  # is no full text to be had over RSS. Declared as paid so it appears in the
+  # directory and is picked up once email ingestion lands.
+  - name: The Nation
+    slug: the-nation
+    feed_url: https://www.thenation.com/feed/?post_type=article
+    tier: paid
+
   # Paid publications are declared the same way but with tier: paid. The RSS
   # ingester skips them (a paid feed carries only a teaser); the email ingester
   # in Milestone 2 will pick them up. Uncomment and edit once that lands.

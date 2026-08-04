@@ -204,6 +204,7 @@ def rank_articles(
     fresh: Sequence[Any] | None = None,
     lead_history: dict[str, str] | None = None,
     secondary_count: int = DEFAULT_SECONDARY_COUNT,
+    per_publication: int | None = None,
     limit: int | None = None,
 ) -> Ranking:
     """Assign articles to front page slots.
@@ -219,6 +220,12 @@ def rank_articles(
                          lead rotation. See :func:`choose_lead`.
         secondary_count: How many medium-headline slots to fill. Fewer are used
                          if there are not enough articles.
+        per_publication: Most river slots any one publication may take. None for
+                         no cap. A wire service posting hourly will otherwise
+                         fill the river and push everything else off the page —
+                         the lead rotation guarantees a spread across headlines,
+                         and this does the same below them. Each publication
+                         keeps its most recent items.
         limit:           Cap on total articles placed. Extras are dropped from
                          the tail of the river, keeping the front page a front
                          page — the archive and publication pages carry the rest.
@@ -279,6 +286,19 @@ def rank_articles(
         remaining = [a for a in remaining if id(a) not in placed]
 
     river = sorted(remaining, key=_by_recency)
+
+    if per_publication is not None and per_publication > 0:
+        # Newest-first already, so taking the first N per publication keeps each
+        # one's most recent items and preserves the overall recency order.
+        seen: dict[str, int] = {}
+        capped: list[Any] = []
+        for article in river:
+            slug = publication_slug(article)
+            if seen.get(slug, 0) >= per_publication:
+                continue
+            seen[slug] = seen.get(slug, 0) + 1
+            capped.append(article)
+        river = capped
 
     if limit is not None:
         headline_count = (1 if lead is not None else 0) + len(secondaries)
