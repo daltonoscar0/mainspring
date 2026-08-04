@@ -712,6 +712,105 @@ class TestIdempotence:
         assert (site_dir / ".git").is_dir()
 
 
+class TestLeadExcerpt:
+    """The lead's opening paragraphs, which also stop its column collapsing."""
+
+    BODY = (
+        "A short kicker.\n"
+        "The first real paragraph of the story, long enough to count as a lede "
+        "rather than a stray line of furniture.\n"
+        "The second paragraph, also comfortably past the minimum length that the "
+        "excerpt builder requires of a block.\n"
+        "The third paragraph, which is likewise long enough to be considered a "
+        "genuine paragraph of body copy.\n"
+        "A fourth paragraph that should fall outside the paragraph cap entirely "
+        "and never be returned by the function.\n"
+    )
+
+    def test_returns_opening_paragraphs(self) -> None:
+        excerpt = sitegen.lead_excerpt(self.BODY)
+        assert len(excerpt) == 3
+        assert excerpt[0].startswith("The first real paragraph")
+
+    def test_short_leading_lines_are_skipped(self) -> None:
+        """A one-line kicker or date stamp is not a lede."""
+        assert not any(p == "A short kicker." for p in sitegen.lead_excerpt(self.BODY))
+
+    def test_character_budget_drops_whole_paragraphs(self) -> None:
+        excerpt = sitegen.lead_excerpt(self.BODY, budget=150)
+        assert len(excerpt) == 1
+        # Never truncated mid-sentence.
+        assert excerpt[0].endswith(".")
+
+    def test_at_least_one_paragraph_survives_a_tiny_budget(self) -> None:
+        assert len(sitegen.lead_excerpt(self.BODY, budget=1)) == 1
+
+    def test_empty_body(self) -> None:
+        assert sitegen.lead_excerpt(None) == []
+        assert sitegen.lead_excerpt("") == []
+        assert sitegen.lead_excerpt("Too short.\nAlso short.") == []
+
+    def test_a_paragraph_restating_the_dek_is_dropped(self) -> None:
+        """Extractive summaries repeat the opening; printing it twice looks broken."""
+        excerpt = sitegen.lead_excerpt(
+            self.BODY,
+            standfirst="The first real paragraph of the story, long enough to count",
+        )
+        assert excerpt[0].startswith("The second paragraph")
+
+    def test_the_dev_mode_placeholder_is_recognised(self) -> None:
+        """The [DEV] shim is the article's opening by construction."""
+        excerpt = sitegen.lead_excerpt(
+            self.BODY,
+            standfirst="[DEV] The first real paragraph of the story, long enough…",
+        )
+        assert excerpt[0].startswith("The second paragraph")
+
+    def test_an_unrelated_dek_drops_nothing(self) -> None:
+        excerpt = sitegen.lead_excerpt(
+            self.BODY, standfirst="An abstractive summary sharing no wording at all."
+        )
+        assert excerpt[0].startswith("The first real paragraph")
+
+    def test_only_leading_repeats_are_dropped(self) -> None:
+        """A sentence recurring later in the piece is the author's business."""
+        body = (
+            "An opening paragraph that is entirely its own thing and quite long.\n"
+            "A repeated line that the dek also happens to have used verbatim here.\n"
+        )
+        excerpt = sitegen.lead_excerpt(
+            body, standfirst="A repeated line that the dek also happens to have used"
+        )
+        assert len(excerpt) == 2
+
+    def test_the_front_page_renders_the_excerpt(self, built) -> None:
+        _, site_dir = built
+        html = read(site_dir, "index.html")
+        assert 'class="lead__text"' in html
+        assert "Continue reading" in html
+
+    def test_only_the_lead_gets_body_text(self, built) -> None:
+        """Secondaries and river items show a dek only."""
+        _, site_dir = built
+        html = read(site_dir, "index.html")
+        assert html.count('class="lead__text"') == 1
+
+    def test_excerpt_text_is_escaped(self, dataset, tmp_path) -> None:
+        # Applied to every article, because which one leads is the ranker's
+        # decision and this test is about escaping, not ranking.
+        for article in dataset.query(Article).all():
+            article.body_text = (
+                "An opening paragraph containing <script>alert(1)</script> and enough "
+                "other words to clear the minimum block length comfortably."
+            )
+        dataset.commit()
+
+        sitegen.build_site(dataset, site_dir=tmp_path / "esc")
+        html = read(tmp_path / "esc", "index.html")
+        assert "<script>alert" not in html
+        assert "&lt;script&gt;" in html
+
+
 class TestDateFormatting:
     """Dates are formatted without platform-specific strftime flags."""
 

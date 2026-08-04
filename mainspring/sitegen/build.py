@@ -175,6 +175,91 @@ def rel_prefix(href: str) -> str:
 # and can be rendered in a test from a literal dict.
 # ---------------------------------------------------------------------------
 
+#: Paragraphs of the lead story to run on the front page, and the character
+#: budget across them.
+LEAD_EXCERPT_PARAGRAPHS = 3
+LEAD_EXCERPT_CHARS = 520
+
+
+def _echoes(paragraph: str, standfirst: str | None, *, window: int = 60) -> bool:
+    """True when a paragraph merely restates the standfirst.
+
+    Summarization models are often extractive — DistilBART frequently lifts a
+    story's opening almost verbatim, and the dev-mode placeholder does so by
+    construction. Either way, printing the dek and then immediately reprinting it
+    as the lede looks like a bug.
+
+    Compared as a common prefix rather than a substring, over at most ``window``
+    characters. Both sides are whitespace- and case-normalized, the ``[DEV]``
+    marker is removed, and trailing ellipses are stripped — a truncated dek ends
+    in one and the paragraph it was cut from does not, which would defeat a
+    substring test.
+    """
+    if not standfirst:
+        return False
+
+    def normalize(text: str) -> str:
+        flat = " ".join(text.split()).casefold()
+        return flat.removeprefix("[dev] ").rstrip("… .").strip()
+
+    body = normalize(paragraph)
+    dek = normalize(standfirst)
+
+    # Compare only as far as the shorter of the two reaches. Below ~25 characters
+    # a shared opening is coincidence, not a repeat.
+    length = min(len(body), len(dek), window)
+    if length < 25:
+        return False
+    return body[:length] == dek[:length]
+
+
+def lead_excerpt(
+    body_text: str | None,
+    *,
+    standfirst: str | None = None,
+    paragraphs: int = LEAD_EXCERPT_PARAGRAPHS,
+    budget: int = LEAD_EXCERPT_CHARS,
+) -> list[str]:
+    """Return the opening paragraphs of an article, for the front page lead.
+
+    A broadsheet runs the start of its lead story on the front page rather than
+    only a headline and a dek. It also solves a layout problem: when the lead has
+    no art its column collapses to a few hundred pixels while the secondary rail
+    runs much taller, leaving a void in the most important part of the page.
+
+    Paragraphs are taken from ``body_text`` — one block per line, which is what
+    the cleaner produces — so the result is plain text and gets autoescaped.
+    Very short opening lines are skipped: a Substack post often begins with a
+    one-line kicker or a date stamp, which is not a lede.
+
+    Args:
+        body_text:  The article's plain-text body.
+        standfirst: The dek, if any. Leading paragraphs that merely restate it
+                    are skipped rather than printed twice.
+        paragraphs: Maximum blocks to return.
+        budget:     Maximum total characters. The last paragraph is dropped
+                    rather than truncated mid-sentence.
+    """
+    if not body_text:
+        return []
+
+    blocks = [line.strip() for line in body_text.split("\n") if len(line.strip()) > 60]
+
+    # Drop leading blocks the dek already said. Only leading ones: the same
+    # sentence recurring later in the piece is the author's business.
+    while blocks and _echoes(blocks[0], standfirst):
+        blocks.pop(0)
+
+    chosen: list[str] = []
+    used = 0
+    for block in blocks[:paragraphs]:
+        if chosen and used + len(block) > budget:
+            break
+        chosen.append(block)
+        used += len(block)
+    return chosen
+
+
 def article_view(article: Article, *, include_body: bool = False) -> dict:
     """Build the template view of one article.
 
@@ -223,6 +308,14 @@ def ranking_view(ranking: rank.Ranking, names: dict[str, str]) -> dict:
         ranking: The computed hierarchy.
         names:   Publication slug to display name.
     """
+    lead = None
+    if ranking.lead is not None:
+        lead = article_view(ranking.lead)
+        # Only the lead runs body text on the front page.
+        lead["excerpt"] = lead_excerpt(
+            ranking.lead.body_text, standfirst=ranking.lead.standfirst
+        )
+
     groups = []
     for slug, articles in rank.group_by_publication(ranking.river):
         groups.append(
@@ -235,7 +328,7 @@ def ranking_view(ranking: rank.Ranking, names: dict[str, str]) -> dict:
         )
 
     return {
-        "lead": article_view(ranking.lead) if ranking.lead is not None else None,
+        "lead": lead,
         "secondaries": [article_view(a) for a in ranking.secondaries],
         "river_groups": groups,
         "river_count": len(ranking.river),

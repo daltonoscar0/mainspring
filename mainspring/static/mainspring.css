@@ -314,6 +314,55 @@ body {
   filter: saturate(0.88) contrast(1.03);
 }
 
+/* The lead's opening paragraphs, set in two columns like a broadsheet's front
+   page. Below the rail breakpoint it drops to one. */
+.lead__text {
+  margin-top: 1.1rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--rule);
+  columns: 2;
+  column-gap: clamp(1.5rem, 2.6vw, 2.5rem);
+  column-rule: 1px solid var(--rule);
+  font-size: 1rem;
+  line-height: 1.58;
+}
+
+.lead__text p {
+  margin: 0 0 0.8rem;
+}
+
+.lead__text > p:first-of-type::first-letter {
+  /* A modest drop cap marks where the story starts, without competing with the
+     larger one on the article page. */
+  float: left;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2.6em;
+  line-height: 0.84;
+  padding: 0.03em 0.07em 0 0;
+}
+
+.lead__continue {
+  break-inside: avoid;
+  margin-bottom: 0;
+}
+
+.lead__continue a {
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+
+.lead__continue a:hover,
+.lead__continue a:focus-visible {
+  background: var(--accent-wash);
+}
+
 .cutline {
   font-family: var(--utility);
   font-size: 0.6875rem;
@@ -930,6 +979,11 @@ img {
   }
 
   .river {
+    columns: 1;
+    column-rule: 0;
+  }
+
+  .lead__text {
     columns: 1;
     column-rule: 0;
   }

@@ -31,6 +31,14 @@
   </figure>
   {% endif %}
   {{ byline(article, rel) }}
+  {# The opening paragraphs, the way a broadsheet runs its lead. Also stops the
+     lead column collapsing when the story has no art. #}
+  {% if article.excerpt %}
+  <div class="lead__text">
+    {% for paragraph in article.excerpt %}<p>{{ paragraph }}</p>{% endfor %}
+    <p class="lead__continue"><a href="{{ rel }}{{ article.href }}">Continue reading →</a></p>
+  </div>
+  {% endif %}
 </article>
 {% endmacro %}
 
