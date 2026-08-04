@@ -16,38 +16,61 @@
 #                       contains the full post. Milestone 2; skipped for now.
 #   homepage_url  Optional. Defaults to feed_url with /feed removed.
 #
-# The seed list below is six free publications that post often, so a fresh
-# install has a full front page on day one. Replace them with your own.
+# Verify a publication before adding it — a Substack can look healthy in a
+# browser and still produce nothing here:
+#
+#     python scripts/check_feeds.py <url-or-domain-or-handle>
+#     python scripts/check_feeds.py --configured    # re-check this whole file
+#
+# Every entry below was checked with that and carries full post text.
 
 publications:
-  - name: Astral Codex Ten
-    slug: astral-codex-ten
-    feed_url: https://www.astralcodexten.com/feed
+  # --- Football -----------------------------------------------------------
+  - name: The Swiss Ramble
+    slug: the-swiss-ramble
+    feed_url: https://swissramble.substack.com/feed
     tier: free
 
-  - name: Construction Physics
-    slug: construction-physics
-    feed_url: https://www.construction-physics.com/feed
+  - name: The Wednesday Word
+    slug: the-wednesday-word
+    feed_url: https://thewednesdayword.substack.com/feed
+    tier: free
+    homepage_url: https://www.thewednesdayword.com
+
+  - name: Chelsea's Voice
+    slug: chelseas-voice
+    feed_url: https://chelseasvoice.substack.com/feed
     tier: free
 
-  - name: Noahpinion
-    slug: noahpinion
-    feed_url: https://www.noahpinion.blog/feed
+  # --- Rugby --------------------------------------------------------------
+  - name: 8/9 Rugby
+    slug: eight-nine-rugby
+    feed_url: https://89rugby.substack.com/feed
     tier: free
 
-  - name: The Honest Broker
-    slug: the-honest-broker
-    feed_url: https://www.honest-broker.com/feed
+  # --- Markets ------------------------------------------------------------
+  - name: Citrini Research
+    slug: citrini-research
+    feed_url: https://citrini.substack.com/feed
+    tier: free
+    homepage_url: https://www.citriniresearch.com
+
+  - name: Cassandra Unchained
+    slug: cassandra-unchained
+    feed_url: https://michaeljburry.substack.com/feed
     tier: free
 
-  - name: Experimental History
-    slug: experimental-history
-    feed_url: https://www.experimental-history.com/feed
+  # --- Technology ---------------------------------------------------------
+  - name: SemiAnalysis
+    slug: semianalysis
+    feed_url: https://semianalysis.substack.com/feed
     tier: free
+    homepage_url: https://newsletter.semianalysis.com
 
-  - name: Silver Bulletin
-    slug: silver-bulletin
-    feed_url: https://www.natesilver.net/feed
+  # --- News ---------------------------------------------------------------
+  - name: The Free Press
+    slug: the-free-press
+    feed_url: https://www.thefp.com/feed
     tier: free
 
   # Paid publications are declared the same way but with tier: paid. The RSS
