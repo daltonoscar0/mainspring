@@ -1,4 +1,5 @@
-<!-- screenshot: site/index.html at 1400px wide -->
+<!-- SCREENSHOT — replace this line with: ![The Mainspring front page](docs/screenshot.png)
+     Generate it by building an edition and capturing site/index.html at 1400px wide. -->
 
 # Mainspring
 
