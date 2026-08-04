@@ -40,9 +40,9 @@ publications:
     feed_url: https://www.honest-broker.com/feed
     tier: free
 
-  - name: Culture Study
-    slug: culture-study
-    feed_url: https://annehelen.substack.com/feed
+  - name: Experimental History
+    slug: experimental-history
+    feed_url: https://www.experimental-history.com/feed
     tier: free
 
   - name: Silver Bulletin

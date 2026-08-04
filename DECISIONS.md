@@ -372,3 +372,36 @@ Every dependency, and why it is not stdlib:
 
 `DEV_MODE` is read at call time rather than import time, so tests can toggle it
 with `monkeypatch.setenv` without reloading modules.
+
+---
+
+## Follow-up: verifying publications
+
+**Added `scripts/check_feeds.py`.** Checking a candidate Substack by hand is
+error-prone in three specific ways, all of which are invisible from the
+publication's website:
+
+  * the domain belongs to something else (`readmax.com` is an unrelated site);
+  * the publication has moved and left a feed that still parses and still
+    carries full posts, but has stopped updating (Read Max, now on Patreon);
+  * the feed carries teasers because posts are paid — not a failure, but it
+    means `tier: paid` rather than `tier: free`.
+
+The script fetches each candidate, runs the real cleaner over a sample of bodies
+rather than trusting raw payload length (chrome inflates a teaser), checks the
+newest post against `STALE_DAYS` (60), and prints a paste-ready YAML block with
+the tier already set. It retries with a `www.` prefix on a DNS failure, because
+Substack custom domains are frequently www-only. Exit code is nonzero if
+anything would not work as a free publication, so it doubles as a health check
+via `--configured`.
+
+**It immediately found a defect in the seeded list.** Culture Study
+(`annehelen.substack.com`) had not posted in 183 days. The signal was visible in
+the built site all along — the publications page read "latest Feb 2, 2026" — and
+was not chased at the time. Replaced with Experimental History (full text, posting
+within the fortnight). All six seeded publications now pass `--configured` with
+exit 0.
+
+The lesson worth keeping: the original seed check verified that feeds *resolved*
+and carried full text, but not that they were *alive*. Length and reachability
+are not liveness.

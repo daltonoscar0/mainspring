@@ -94,6 +94,21 @@ domains (`https://www.example.com/feed`) as well as
 filename, so pick it once. `tier` is `free` (ingested over RSS, works today) or
 `paid` (ingested from email — see the roadmap).
 
+**Check publications before you add them.** A Substack can look healthy in a
+browser and still produce nothing here — the domain may belong to something else,
+the publication may have moved and left a stale feed behind, or its posts may be
+paid and arrive as teasers. This checks all three and prints YAML you can paste:
+
+```bash
+python scripts/check_feeds.py https://www.astralcodexten.com/feed
+python scripts/check_feeds.py construction-physics.com maxread   # domain or handle
+python scripts/check_feeds.py --from-file my-substacks.txt        # one per line
+python scripts/check_feeds.py --configured                        # re-check what you have
+```
+
+It exits nonzero if anything won't work as a free publication, so it also serves
+as a periodic health check on a list you already have.
+
 ### 4. Build an edition
 
 ```bash
