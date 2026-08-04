@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Protocol, Sequence, runtime_checkable
+from typing import Any, Callable, Protocol, Sequence, runtime_checkable
 
 #: How many medium-headline stories sit under the lead by default.
 DEFAULT_SECONDARY_COUNT = 3
@@ -75,18 +75,52 @@ def publication_slug(article: Any) -> str:
 
 
 @dataclass(frozen=True)
+class SectionSpec:
+    """A declared river: its key, its heading, and how much room it gets.
+
+    Attributes:
+        key:             Matches whatever ``section_of`` returns for an article.
+        label:           Heading shown above the river.
+        limit:           Slots reserved for this river. None for no cap.
+        per_publication: Overrides the global per-publication cap within this
+                         river. None to inherit it.
+    """
+
+    key: str
+    label: str
+    limit: int | None = None
+    per_publication: int | None = None
+
+
+@dataclass(frozen=True)
+class RiverSection:
+    """One rendered river."""
+
+    key: str
+    label: str
+    articles: list[Any] = field(default_factory=list)
+
+    def __len__(self) -> int:
+        return len(self.articles)
+
+
+@dataclass(frozen=True)
 class Ranking:
     """The front page layout for one edition.
 
     Attributes:
         lead:        The single largest story, or None if there are no articles.
         secondaries: Medium-headline stories under the lead, longest first.
-        river:       Everything remaining, most recent first.
+        river:       Everything remaining, most recent first. When the page is
+                     split into sections this is the concatenation of them in
+                     section order, so counts and archives need no special case.
+        sections:    The rivers, in declared order. Empty when unsplit.
     """
 
     lead: Any | None = None
     secondaries: list[Any] = field(default_factory=list)
     river: list[Any] = field(default_factory=list)
+    sections: list[RiverSection] = field(default_factory=list)
 
     @property
     def all_articles(self) -> list[Any]:
@@ -206,6 +240,8 @@ def rank_articles(
     secondary_count: int = DEFAULT_SECONDARY_COUNT,
     per_publication: int | None = None,
     limit: int | None = None,
+    section_of: Callable[[Any], str] | None = None,
+    sections: Sequence[SectionSpec] | None = None,
 ) -> Ranking:
     """Assign articles to front page slots.
 
@@ -229,10 +265,21 @@ def rank_articles(
         limit:           Cap on total articles placed. Extras are dropped from
                          the tail of the river, keeping the front page a front
                          page — the archive and publication pages carry the rest.
+                         Ignored when ``sections`` is given, since each river
+                         then has its own budget.
+        section_of:      Classifies an article into a section key. Required for a
+                         split river; without it there is one unnamed river.
+        sections:        The rivers to build, in page order, each with its own
+                         slot budget. Separate budgets are the point: pooled and
+                         ordered by recency, a wire service that posts hourly
+                         takes every slot and a newsletter from three days ago
+                         never appears. Articles whose section key matches no spec
+                         are dropped from the river — declare every key you
+                         intend to publish.
 
     Returns:
         A :class:`Ranking`. Every input article appears in exactly one slot
-        unless dropped by ``limit``.
+        unless dropped by ``limit`` or a section budget.
     """
     remaining = list(articles)
     if not remaining:
@@ -287,24 +334,51 @@ def rank_articles(
 
     river = sorted(remaining, key=_by_recency)
 
-    if per_publication is not None and per_publication > 0:
-        # Newest-first already, so taking the first N per publication keeps each
-        # one's most recent items and preserves the overall recency order.
-        seen: dict[str, int] = {}
-        capped: list[Any] = []
-        for article in river:
-            slug = publication_slug(article)
-            if seen.get(slug, 0) >= per_publication:
-                continue
-            seen[slug] = seen.get(slug, 0) + 1
-            capped.append(article)
-        river = capped
+    if sections and section_of is not None:
+        built: list[RiverSection] = []
+        for spec in sections:
+            in_section = [a for a in river if section_of(a) == spec.key]
+            cap = spec.per_publication if spec.per_publication is not None else per_publication
+            in_section = _cap_per_publication(in_section, cap)
+            if spec.limit is not None:
+                in_section = in_section[: max(0, spec.limit)]
+            built.append(RiverSection(key=spec.key, label=spec.label, articles=in_section))
+
+        return Ranking(
+            lead=lead,
+            secondaries=secondaries,
+            river=[a for section in built for a in section.articles],
+            sections=built,
+        )
+
+    river = _cap_per_publication(river, per_publication)
 
     if limit is not None:
         headline_count = (1 if lead is not None else 0) + len(secondaries)
         river = river[: max(0, limit - headline_count)]
 
     return Ranking(lead=lead, secondaries=secondaries, river=river)
+
+
+def _cap_per_publication(articles: list[Any], cap: int | None) -> list[Any]:
+    """Keep at most ``cap`` articles per publication, preserving order.
+
+    ``articles`` is expected newest-first, so taking the first ``cap`` from each
+    publication keeps its most recent items and leaves the overall recency
+    ordering intact. ``None`` or a non-positive cap is a no-op.
+    """
+    if cap is None or cap <= 0:
+        return articles
+
+    seen: dict[str, int] = {}
+    kept: list[Any] = []
+    for article in articles:
+        slug = publication_slug(article)
+        if seen.get(slug, 0) >= cap:
+            continue
+        seen[slug] = seen.get(slug, 0) + 1
+        kept.append(article)
+    return kept
 
 
 def group_by_publication(articles: Sequence[Any]) -> list[tuple[str, list[Any]]]:

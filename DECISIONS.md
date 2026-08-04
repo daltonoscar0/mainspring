@@ -494,3 +494,67 @@ a newsletter that posted three days ago is reached. Options, in increasing order
 of work: raise `FRONT_PAGE_LIMIT`, lower `RIVER_PER_PUBLICATION` to 2 so more
 desks fit, or give the front page two rivers — a wire section and a newsletters
 section. The third is the real answer and is not built.
+
+---
+
+## Follow-up: two rivers
+
+The mixed subscription list — 8 weekly newsletters and 13 outlets filing all day —
+could not be served by one river. Ordered by recency and drawn from a shared pool,
+every slot went to whoever posted most recently, which was always the wire. Four
+newsletters were absent from the front page entirely. The per-publication cap
+stopped any single outlet monopolising the river but could not manufacture slots:
+13 desks × 4 filled a 40-story page before a newsletter from three days ago was
+reached.
+
+**Publications are classified explicitly, not inferred.** A new `kind` field on
+each subscription: `newsletter` (an individual writer, filing occasionally) or
+`wire` (a news outlet). Inferring it from posting frequency would be
+non-deterministic and would reclassify a publication on a quiet week; inferring it
+from the domain breaks on every custom domain, and half the Substacks here use
+one. `newsletter` is the default because that is what the product is for.
+
+**Each river gets reserved slots, which is the entire mechanism.** A shared budget
+reproduces the original problem however it is ordered. `NEWSLETTER_RIVER_LIMIT`
+(18) and `WIRE_RIVER_LIMIT` (22) sum to `FRONT_PAGE_LIMIT`. The per-publication cap
+still applies within each river, and a section may override it.
+
+**`rank_articles` gained `section_of` and `sections` rather than a bespoke
+function.** `section_of` classifies an article; `sections` declares the rivers in
+page order with their budgets. Both are needed to split — one alone falls back to
+a single river, so no caller breaks. `Ranking.river` remains the flat
+concatenation in section order, so `all_articles`, edition counts and the archive
+needed no changes at all. Ranking stays a pure function over duck-typed objects.
+
+**Labels: "Your correspondents" and "The wire".** Both are real newspaper terms
+and each encodes something true — correspondents file to you under their own name;
+the wire is agency copy arriving all day. Newsletters run first.
+
+**An empty river renders nothing.** An all-newsletter subscription list would
+otherwise get a bare "The wire" heading and rule, which reads as a rendering fault
+rather than a quiet news day. Tested.
+
+**A column was added to `publications`, so `init_db` now adds missing columns.**
+`create_all` creates missing tables but never alters existing ones, so `kind` would
+have failed every query on an existing install with "no such column". The
+alternative was telling people to delete `news.db`, which throws away the archive —
+feeds carry only the last twenty-odd posts, so everything older exists nowhere
+else. `_add_missing_columns` handles the additive case only and does not pretend to
+be a migration framework. Verified against a live database and by a test that drops
+the column and re-runs `init_db`.
+
+**Truthout's donation appeals were still reaching the summarizer.** Publishers
+splice fundraising into the middle of the body through named placeholder slots —
+`truth-post-content-before truth-entity-placement` wrapping an `inline-callout` —
+so the appeal sits inside the article element and became the standfirst on two
+front-page stories. Patterns added for the generic slot names
+(`entity-placement`, `content-before`/`content-after`, `inline-callout`). The
+40%-of-text guard makes extending the denylist this way safe rather than a gamble.
+
+**Still not solved: the newsletter river's columns balance unevenly** when one
+publication has four stories and another has one. CSS multi-column fills
+sequentially, which is what a newspaper does, so this is left alone.
+
+The front page now carries 18 newsletter stories across 7 desks and 22 wire
+stories across 9. Every in-window newsletter appears. No promotional or navigation
+text reaches any dek — checked by string search over the built page, not by eye.

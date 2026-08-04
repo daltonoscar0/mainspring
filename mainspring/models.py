@@ -75,6 +75,11 @@ class Publication(Base):
     #: "free" (RSS ingestion) or "paid" (email ingestion, Milestone 2).
     tier = Column(String(16), nullable=False, default="free")
 
+    #: "newsletter" (an individual writer) or "wire" (a news outlet). Decides
+    #: which river this publication's stories run in on the front page. Mirrored
+    #: from subscriptions.yaml on every ingest.
+    kind = Column(String(16), nullable=False, default="newsletter", server_default="newsletter")
+
     #: Public home page, linked from the publication page.
     homepage_url = Column(String(1024), nullable=True)
 

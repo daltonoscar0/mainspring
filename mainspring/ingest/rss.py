@@ -110,6 +110,7 @@ def sync_publications(db: Session, subs: list[Subscription]) -> dict[str, Public
         row.name = sub.name
         row.feed_url = sub.feed_url
         row.tier = sub.tier
+        row.kind = sub.kind
         row.homepage_url = sub.homepage_url
         result[sub.slug] = row
 

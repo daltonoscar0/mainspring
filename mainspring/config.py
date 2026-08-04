@@ -84,6 +84,21 @@ MAX_ENTRIES_PER_FEED = int(os.environ.get("MAX_ENTRIES_PER_FEED", "25"))
 #: headlines; this does the same for the river.
 RIVER_PER_PUBLICATION = int(os.environ.get("RIVER_PER_PUBLICATION", "4"))
 
+#: Slots reserved for each river, keyed by publication kind.
+#:
+#: Separate budgets are the whole point of splitting the rivers: a shared pool
+#: ordered by recency always goes to whoever posted most recently, which is the
+#: wire, every time. Reserving slots means a newsletter that filed three days ago
+#: still reaches the front page. The two default to ``FRONT_PAGE_LIMIT`` between
+#: them.
+NEWSLETTER_RIVER_LIMIT = int(os.environ.get("NEWSLETTER_RIVER_LIMIT", "18"))
+WIRE_RIVER_LIMIT = int(os.environ.get("WIRE_RIVER_LIMIT", "22"))
+
+
+def river_limits() -> dict[str, int]:
+    """Return the per-kind river budgets."""
+    return {"newsletter": NEWSLETTER_RIVER_LIMIT, "wire": WIRE_RIVER_LIMIT}
+
 #: Descriptive User-Agent so publications can identify (and contact) the bot.
 USER_AGENT = os.environ.get(
     "MAINSPRING_USER_AGENT",
@@ -105,6 +120,25 @@ def dev_mode() -> bool:
 
 Tier = Literal["free", "paid"]
 
+#: Which river a publication files into.
+#:
+#: ``newsletter`` — an individual writer, filing occasionally. The premise of the
+#: paper, so this is the default and its river runs first.
+#: ``wire`` — a news outlet, filing many times a day. Useful, but it will bury
+#: everything else if the two are pooled, which is why they are not.
+Kind = Literal["newsletter", "wire"]
+
+#: Display labels for the two rivers. Both are real newspaper terms and each says
+#: something true: correspondents file to you under their own name; the wire is
+#: agency copy arriving all day.
+KIND_LABELS: dict[str, str] = {
+    "newsletter": "Your correspondents",
+    "wire": "The wire",
+}
+
+#: Order the rivers appear in. Newsletters first — that is what this is for.
+KIND_ORDER: tuple[str, ...] = ("newsletter", "wire")
+
 
 # ---------------------------------------------------------------------------
 # Subscriptions
@@ -121,6 +155,10 @@ class Subscription:
         tier:          ``free`` (ingested by RSS) or ``paid`` (ingested by email
                        in Milestone 2; skipped by the RSS ingester today).
         homepage_url:  Public home page, linked from the publication page.
+        kind:          ``newsletter`` (an individual writer, filing occasionally)
+                       or ``wire`` (a news outlet, filing all day). Decides which
+                       river the publication's stories run in. Defaults to
+                       ``newsletter``.
         fetch_pages:   Whether a teaser entry may trigger a fetch of the post
                        page. Set ``false`` for a publication whose feed is clean
                        but whose page layout defeats the cleaner — Democracy
@@ -136,6 +174,7 @@ class Subscription:
     feed_url: str
     tier: Tier = "free"
     homepage_url: str = ""
+    kind: Kind = "newsletter"
     fetch_pages: bool = True
 
     @property
@@ -197,6 +236,12 @@ def parse_subscriptions(raw: object, *, source: str = "<memory>") -> list[Subscr
         if tier not in ("free", "paid"):
             raise SubscriptionsError(f"{where} has invalid tier {tier!r} (use free or paid)")
 
+        kind = entry.get("kind", "newsletter")
+        if kind not in KIND_ORDER:
+            raise SubscriptionsError(
+                f"{where} has invalid kind {kind!r} (use newsletter or wire)"
+            )
+
         fetch_pages = entry.get("fetch_pages", True)
         if not isinstance(fetch_pages, bool):
             raise SubscriptionsError(
@@ -216,6 +261,7 @@ def parse_subscriptions(raw: object, *, source: str = "<memory>") -> list[Subscr
                 feed_url=feed_url,
                 tier=tier,
                 homepage_url=(entry.get("homepage_url") or _homepage_from_feed(feed_url)).strip(),
+                kind=kind,
                 fetch_pages=fetch_pages,
             )
         )

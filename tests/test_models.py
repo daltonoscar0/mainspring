@@ -208,6 +208,43 @@ class TestDatabaseModule:
         assert target.exists()
         database.reset_engine()
 
+    def test_a_missing_column_is_added_rather_than_breaking_queries(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        """An existing news.db must survive a new column, not have to be deleted.
+
+        Feeds only carry the last twenty-odd posts, so deleting the database
+        throws away every older article — it exists nowhere else.
+        """
+        from sqlalchemy import inspect, text
+
+        from mainspring import database
+
+        monkeypatch.setenv("DB_PATH", str(tmp_path / "upgrade.db"))
+        database.reset_engine()
+        database.init_db()
+
+        # Simulate the older schema by dropping the column back off.
+        engine = database.get_engine()
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE publications DROP COLUMN kind"))
+        assert "kind" not in {
+            c["name"] for c in inspect(engine).get_columns("publications")
+        }
+
+        database.init_db()
+
+        assert "kind" in {c["name"] for c in inspect(engine).get_columns("publications")}
+        # And the table is usable again.
+        session = database.session()
+        session.add(
+            Publication(name="X", slug="x", feed_url="https://x.example/feed")
+        )
+        session.commit()
+        assert session.query(Publication).one().kind == "newsletter"
+        session.close()
+        database.reset_engine()
+
     def test_get_db_closes_its_session(self, db) -> None:
         from mainspring.database import get_db
 

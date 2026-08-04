@@ -129,6 +129,13 @@ _CHROME_CLASS_RE = re.compile(
     r"author-bio|contributor-bio|byline-bio|"
     r"tag-list|topic-list|category-list|"
     r"letter-to-the-editor|"
+    # Injected promo slots. Publishers splice fundraising and cross-promotion
+    # into the middle of the body through named placeholders, so the appeal is
+    # inside the article element and reads as its opening sentence. Truthout's
+    # `truth-post-content-before truth-entity-placement` wrapping an
+    # `inline-callout` is the shape; these names are generic across CMSs.
+    r"entity-placement|[-_]placement\b|content-before|content-after|"
+    r"inline-callout|callout--text|"
     r"lightbox|offcanvas|[-_]modal|modal[-_]"
     r")",
     re.IGNORECASE,

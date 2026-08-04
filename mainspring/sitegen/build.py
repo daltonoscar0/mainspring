@@ -316,21 +316,35 @@ def ranking_view(ranking: rank.Ranking, names: dict[str, str]) -> dict:
             ranking.lead.body_text, standfirst=ranking.lead.standfirst
         )
 
-    groups = []
-    for slug, articles in rank.group_by_publication(ranking.river):
-        groups.append(
+    def desks(articles: list) -> list[dict]:
+        """Group a river's articles under their publication's standing head."""
+        return [
             {
                 "slug": slug,
                 "name": names.get(slug, slug),
                 "href": publication_href(slug),
-                "articles": [article_view(a) for a in articles],
+                "articles": [article_view(a) for a in group],
             }
-        )
+            for slug, group in rank.group_by_publication(articles)
+        ]
+
+    rivers = [
+        {
+            "key": section.key,
+            "label": section.label,
+            "count": len(section.articles),
+            "groups": desks(section.articles),
+        }
+        for section in ranking.sections
+        # A river with nothing in it gets no heading — an empty section rule
+        # reads as a rendering fault rather than a quiet news day.
+        if section.articles
+    ]
 
     return {
         "lead": lead,
         "secondaries": [article_view(a) for a in ranking.secondaries],
-        "river_groups": groups,
+        "rivers": rivers,
         "river_count": len(ranking.river),
     }
 
@@ -415,6 +429,21 @@ def build_site(
 
     publications = db.query(Publication).order_by(Publication.name).all()
     names = {p.slug: p.name for p in publications}
+    kinds = {p.slug: (p.kind or "newsletter") for p in publications}
+
+    def section_of(article: Article) -> str:
+        """Which river an article files into."""
+        return kinds.get(rank.publication_slug(article), "newsletter")
+
+    limits = config.river_limits()
+    section_specs = [
+        rank.SectionSpec(
+            key=key,
+            label=config.KIND_LABELS.get(key, key.title()),
+            limit=limits.get(key),
+        )
+        for key in config.KIND_ORDER
+    ]
 
     articles = (
         db.query(Article)
@@ -479,6 +508,8 @@ def build_site(
             lead_history=lead_history,
             per_publication=config.RIVER_PER_PUBLICATION,
             limit=config.FRONT_PAGE_LIMIT,
+            section_of=section_of,
+            sections=section_specs,
         )
         rankings[date_iso] = ranking
 
@@ -546,7 +577,7 @@ def build_site(
                 "lead_article_id": None,
                 "previous": [],
             },
-            "ranking": {"lead": None, "secondaries": [], "river_groups": [], "river_count": 0},
+            "ranking": {"lead": None, "secondaries": [], "rivers": [], "river_count": 0},
         }
     _write(out / "index.html", template.render(rel="", **payload, **shared))
 

@@ -10,6 +10,7 @@ is what the test suite does — still takes effect.
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from . import config
+
+logger = logging.getLogger(__name__)
 
 #: Declarative base shared by every model in :mod:`mainspring.models`.
 Base = declarative_base()
@@ -74,7 +77,7 @@ def session() -> Session:
 
 
 def init_db() -> None:
-    """Create any tables that do not exist yet.
+    """Create any tables that do not exist yet, and add any missing columns.
 
     Safe to call on every startup. Importing :mod:`mainspring.models` here
     registers the table definitions on ``Base.metadata`` before ``create_all``
@@ -82,7 +85,52 @@ def init_db() -> None:
     """
     from . import models  # noqa: F401 — registers tables on Base.metadata
 
-    Base.metadata.create_all(bind=get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(bind=engine)
+    _add_missing_columns(engine)
+
+
+def _add_missing_columns(engine: Engine) -> None:
+    """Add columns present on the models but not yet in the database file.
+
+    ``create_all`` creates missing *tables* but never alters existing ones, so a
+    new column on an existing install would otherwise fail every query with
+    "no such column". This is not a migration framework and does not pretend to
+    be — it handles the additive case, which is the only kind of change made so
+    far, and leaves anything else alone.
+
+    The alternative was telling people to delete ``news.db``, which throws away
+    the archive: feeds only carry the last twenty-odd posts, so everything older
+    exists nowhere else.
+
+    SQLite requires a DEFAULT when adding a NOT NULL column, so columns without
+    one are added nullable and the model's Python-side default fills them on the
+    next write.
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            continue
+
+        present = {column["name"] for column in inspector.get_columns(table.name)}
+        for column in table.columns:
+            if column.name in present:
+                continue
+
+            column_type = column.type.compile(engine.dialect)
+            clause = f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {column_type}'
+
+            default = getattr(column.server_default, "arg", None)
+            if default is not None:
+                clause += f" NOT NULL DEFAULT '{default}'" if not column.nullable else f" DEFAULT '{default}'"
+
+            with engine.begin() as connection:
+                connection.execute(text(clause))
+            logger.info("Added column %s.%s", table.name, column.name)
 
 
 def get_db():

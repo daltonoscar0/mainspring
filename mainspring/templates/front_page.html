@@ -30,24 +30,27 @@
   {% endif %}
 </div>
 
-{% if ranking.river_groups %}
+{# One river per publication kind. Newsletters run first — the whole point of the
+   paper — then the wire. A river with nothing in it is omitted rather than
+   rendered as a bare heading. #}
+{% for river in ranking.rivers %}
 <div class="section-head">
-  <h2>The rest of the wire</h2>
+  <h2>{{ river.label }}</h2>
   <span class="count">
-    {{ ranking.river_count }} stor{{ 'y' if ranking.river_count == 1 else 'ies' }}
+    {{ river.count }} stor{{ 'y' if river.count == 1 else 'ies' }}
     {%- if edition.window_days > 1 %} · past {{ edition.window_days }} days{% endif -%}
   </span>
 </div>
 
-<div class="river">
-  {% for group in ranking.river_groups %}
+<div class="river river--{{ river.key }}">
+  {% for group in river.groups %}
   <section class="river__group">
     <h3 class="standing-head"><a href="{{ rel }}{{ group.href }}">{{ group.name }}</a></h3>
     {% for article in group.articles %}{{ story.river_item(article, rel) }}{% endfor %}
   </section>
   {% endfor %}
 </div>
-{% endif %}
+{% endfor %}
 
 {% if edition.previous %}
 <div class="section-head">

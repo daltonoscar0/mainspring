@@ -387,6 +387,191 @@ class TestRiverCap:
         assert html.count('class="river__item"') <= html.count('class="standing-head"')
 
 
+class TestSplitRivers:
+    """Two rivers with reserved slots, so the wire cannot bury the newsletters."""
+
+    SPECS = (
+        rank.SectionSpec(key="newsletter", label="Your correspondents", limit=4),
+        rank.SectionSpec(key="wire", label="The wire", limit=6),
+    )
+
+    @pytest.fixture
+    def mixed(self) -> list[FakeArticle]:
+        """A wire posting today, newsletters that filed days ago.
+
+        The realistic shape: pooled and sorted by recency, every slot goes to the
+        wire and no newsletter appears at all.
+        """
+        wire = [
+            FakeArticle(f"https://wire{i % 3}.example/p/{i}", f"wire{i % 3}", 600, "2026-08-04")
+            for i in range(24)
+        ]
+        # Three newsletters with three posts each, so some remain for the river
+        # after the lead and secondary slots are filled.
+        letters = [
+            FakeArticle(f"https://{slug}.example/p/{n}", slug, 900 - n, "2026-08-01")
+            for slug in ("alpha", "beta", "gamma")
+            for n in range(3)
+        ]
+        return wire + letters
+
+    @staticmethod
+    def section_of(article) -> str:
+        return "wire" if rank.publication_slug(article).startswith("wire") else "newsletter"
+
+    def test_pooled_the_newsletters_disappear(self, mixed) -> None:
+        """Establishes the problem the split exists to solve."""
+        river = rank.rank_articles(
+            mixed, lead_history={}, per_publication=4, limit=12
+        ).river
+        slugs = {rank.publication_slug(a) for a in river}
+        assert not slugs & {"alpha", "beta", "gamma"}
+
+    def test_split_gives_the_newsletters_their_own_slots(self, mixed) -> None:
+        ranking = rank.rank_articles(
+            mixed,
+            lead_history={},
+            per_publication=4,
+            section_of=self.section_of,
+            sections=self.SPECS,
+        )
+        assert [s.key for s in ranking.sections] == ["newsletter", "wire"]
+        letters = ranking.sections[0]
+        assert letters.articles, "the newsletter river must not be empty"
+        assert all(self.section_of(a) == "newsletter" for a in letters.articles)
+
+    def test_each_river_holds_only_its_own_kind(self, mixed) -> None:
+        ranking = rank.rank_articles(
+            mixed, lead_history={}, section_of=self.section_of, sections=self.SPECS
+        )
+        for section in ranking.sections:
+            assert all(self.section_of(a) == section.key for a in section.articles)
+
+    def test_section_limits_are_respected(self, mixed) -> None:
+        ranking = rank.rank_articles(
+            mixed, lead_history={}, section_of=self.section_of, sections=self.SPECS
+        )
+        by_key = {s.key: s for s in ranking.sections}
+        assert len(by_key["newsletter"].articles) <= 4
+        assert len(by_key["wire"].articles) <= 6
+
+    def test_labels_are_carried_through(self, mixed) -> None:
+        ranking = rank.rank_articles(
+            mixed, lead_history={}, section_of=self.section_of, sections=self.SPECS
+        )
+        assert [s.label for s in ranking.sections] == ["Your correspondents", "The wire"]
+
+    def test_river_is_the_concatenation_of_the_sections(self, mixed) -> None:
+        """``river`` stays meaningful so counts and archives need no special case."""
+        ranking = rank.rank_articles(
+            mixed, lead_history={}, section_of=self.section_of, sections=self.SPECS
+        )
+        expected = [a for section in ranking.sections for a in section.articles]
+        assert ranking.river == expected
+
+    def test_no_article_is_placed_twice(self, mixed) -> None:
+        ranking = rank.rank_articles(
+            mixed, lead_history={}, section_of=self.section_of, sections=self.SPECS
+        )
+        urls = [a.url for a in ranking.all_articles]
+        assert len(urls) == len(set(urls))
+
+    def test_per_publication_cap_still_applies_inside_a_river(self, mixed) -> None:
+        ranking = rank.rank_articles(
+            mixed,
+            lead_history={},
+            per_publication=2,
+            section_of=self.section_of,
+            sections=self.SPECS,
+        )
+        wire = next(s for s in ranking.sections if s.key == "wire")
+        counts: dict[str, int] = {}
+        for article in wire.articles:
+            slug = rank.publication_slug(article)
+            counts[slug] = counts.get(slug, 0) + 1
+        assert all(count <= 2 for count in counts.values()), counts
+
+    def test_a_section_may_override_the_global_cap(self, mixed) -> None:
+        specs = (
+            rank.SectionSpec(key="newsletter", label="L", limit=10),
+            rank.SectionSpec(key="wire", label="W", limit=20, per_publication=1),
+        )
+        ranking = rank.rank_articles(
+            mixed, lead_history={}, per_publication=5,
+            section_of=self.section_of, sections=specs,
+        )
+        wire = next(s for s in ranking.sections if s.key == "wire")
+        assert len(wire.articles) == len({rank.publication_slug(a) for a in wire.articles})
+
+    def test_sections_without_section_of_are_ignored(self, mixed) -> None:
+        """Both arguments are required; one alone falls back to a single river."""
+        ranking = rank.rank_articles(mixed, lead_history={}, sections=self.SPECS)
+        assert ranking.sections == []
+        assert ranking.river
+
+    def test_an_unmatched_section_key_drops_those_articles(self, mixed) -> None:
+        only_wire = (rank.SectionSpec(key="wire", label="W", limit=99),)
+        ranking = rank.rank_articles(
+            mixed, lead_history={}, section_of=self.section_of, sections=only_wire
+        )
+        assert all(self.section_of(a) == "wire" for a in ranking.river)
+
+    def test_determinism(self, mixed) -> None:
+        first = rank.rank_articles(
+            mixed, lead_history={}, section_of=self.section_of, sections=self.SPECS
+        )
+        second = rank.rank_articles(
+            list(reversed(mixed)), lead_history={},
+            section_of=self.section_of, sections=self.SPECS,
+        )
+        assert [a.url for a in first.river] == [a.url for a in second.river]
+
+
+class TestSplitRiversOnThePage:
+    """The rendered front page."""
+
+    @pytest.fixture
+    def two_kinds(self, dataset):
+        """Make one fixture publication a wire outlet."""
+        publication = dataset.query(Publication).filter_by(slug="gamma-notes").one()
+        publication.kind = "wire"
+        dataset.commit()
+        return dataset
+
+    def test_both_headings_render(self, two_kinds, tmp_path) -> None:
+        sitegen.build_site(two_kinds, site_dir=tmp_path / "two")
+        html = read(tmp_path / "two", "index.html")
+        assert "Your correspondents" in html
+        assert "The wire" in html
+
+    def test_each_river_gets_its_own_container(self, two_kinds, tmp_path) -> None:
+        sitegen.build_site(two_kinds, site_dir=tmp_path / "two")
+        html = read(tmp_path / "two", "index.html")
+        assert 'class="river river--newsletter"' in html
+        assert 'class="river river--wire"' in html
+
+    def test_a_wire_publication_appears_only_in_the_wire_river(
+        self, two_kinds, tmp_path
+    ) -> None:
+        import re
+
+        sitegen.build_site(two_kinds, site_dir=tmp_path / "two")
+        html = read(tmp_path / "two", "index.html")
+        wire_block = html.split('class="river river--wire"')[1]
+        letters_block = html.split('class="river river--newsletter"')[1].split(
+            'class="river river--wire"'
+        )[0]
+        assert "Gamma Notes" in wire_block
+        assert "Gamma Notes" not in letters_block
+
+    def test_an_empty_river_is_omitted(self, dataset, tmp_path) -> None:
+        """All-newsletter subscriptions must not render a bare "The wire" rule."""
+        sitegen.build_site(dataset, site_dir=tmp_path / "one")
+        html = read(tmp_path / "one", "index.html")
+        assert 'class="river river--newsletter"' in html
+        assert "river--wire" not in html
+
+
 class TestPublicationSlug:
     """Ranking must read a slug off an ORM object or a plain one."""
 
