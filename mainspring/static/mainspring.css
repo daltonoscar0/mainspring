@@ -715,7 +715,8 @@ body {
   padding: 1.15rem 0;
   border-bottom: 1px solid var(--rule);
   display: grid;
-  grid-template-columns: 11rem minmax(0, 1fr);
+  /* Wide enough for "Wednesday, July 29, 2026" on one line at label size. */
+  grid-template-columns: 13rem minmax(0, 1fr);
   gap: 0 1.5rem;
   align-items: baseline;
 }
@@ -758,17 +759,21 @@ body {
   max-width: 60ch;
 }
 
-/* Publication directory: a card per desk, ruled not boxed. */
+/* Publication directory: a desk per publication, in a bounded block.
+   The block is ruled top and bottom rather than every cell — with an auto-fill
+   grid the final row is usually partial, and a rule that stops halfway across
+   the page reads as a mistake. */
 .desks {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 0;
+  gap: 0.4rem 0;
   border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 0.5rem 0;
 }
 
 .desk {
-  padding: 1.2rem 1.4rem 1.3rem 0;
-  border-bottom: 1px solid var(--rule);
+  padding: 1rem 1.4rem 1.1rem 0;
 }
 
 .desk h2 {
