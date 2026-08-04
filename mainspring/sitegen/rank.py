@@ -17,6 +17,16 @@ Version 1 is deliberately simple and completely deterministic:
 
   **River** — everything else, most recent first.
 
+Fresh versus held
+-----------------
+Six Substacks do not file six stories a day. On most days one or two posts
+arrive, which is not a front page. So an edition is built from a window of the
+recent wire — see ``EDITION_WINDOW_DAYS`` — while the ``fresh`` argument marks
+the articles that are actually new that day. The lead and the secondaries come
+from the fresh set whenever it can supply them, so the top of the page is always
+news; the held stories fill the slots and the river below. That is what a real
+paper does on a slow day, and it is why a front page is never one story wide.
+
 Everything here is a pure function of its arguments. No database, no clock, no
 filesystem: given the same articles and the same lead history it produces the
 same ranking, so a rebuild yields no diff. That also makes it cheap to replace —
@@ -175,6 +185,7 @@ def choose_lead(
 def rank_articles(
     articles: Sequence[Any],
     *,
+    fresh: Sequence[Any] | None = None,
     lead_history: dict[str, str] | None = None,
     secondary_count: int = DEFAULT_SECONDARY_COUNT,
     limit: int | None = None,
@@ -182,7 +193,12 @@ def rank_articles(
     """Assign articles to front page slots.
 
     Args:
-        articles:        Every article eligible for this edition. Not mutated.
+        articles:        Every article eligible for this edition — the whole
+                         window. Not mutated.
+        fresh:           The subset published on the edition's own date. The
+                         lead and secondaries are drawn from here first, so the
+                         top of the page is news rather than the longest thing in
+                         the window. None means treat everything as fresh.
         lead_history:    Publication slug to the ISO date it last led, driving
                          lead rotation. See :func:`choose_lead`.
         secondary_count: How many medium-headline slots to fill. Fewer are used
@@ -199,38 +215,52 @@ def rank_articles(
     if not remaining:
         return Ranking()
 
-    lead = choose_lead(remaining, lead_history)
+    fresh_urls = {str(a.url) for a in fresh} if fresh is not None else None
+
+    def is_fresh(article: Any) -> bool:
+        return fresh_urls is None or str(article.url) in fresh_urls
+
+    fresh_pool = [a for a in remaining if is_fresh(a)]
+    lead = choose_lead(fresh_pool or remaining, lead_history)
     remaining = [a for a in remaining if a is not lead]
 
     # Secondaries prefer one story per publication. Without this, a publication
     # that posted three long essays in a day takes the lead and every secondary
     # slot, and the top of the page stops looking like a front page.
+    #
+    # Fresh stories are offered every slot before any held story is considered,
+    # so a busy news day never buries today's writing under last week's.
     secondaries: list[Any] = []
     if secondary_count > 0:
-        spent = {publication_slug(lead)} if lead is not None else set()
-        for article in sorted(remaining, key=_by_length):
-            if len(secondaries) >= secondary_count:
-                break
-            slug = publication_slug(article)
-            if slug in spent:
-                continue
-            secondaries.append(article)
-            spent.add(slug)
+        placed: set[int] = set()
 
-        # Not enough distinct publications to fill the slots — fall back to raw
-        # length so the layout is never left with a hole.
-        if len(secondaries) < secondary_count:
-            placed = {id(a) for a in secondaries}
-            for article in sorted(remaining, key=_by_length):
+        def fill(candidates: list[Any], *, distinct: bool) -> None:
+            """Take from ``candidates``, longest first, until the slots are full."""
+            for article in candidates:
                 if len(secondaries) >= secondary_count:
-                    break
-                if id(article) not in placed:
-                    secondaries.append(article)
-                    placed.add(id(article))
-            secondaries.sort(key=_by_length)
+                    return
+                if id(article) in placed:
+                    continue
+                if distinct and publication_slug(article) in spent:
+                    continue
+                secondaries.append(article)
+                placed.add(id(article))
+                spent.add(publication_slug(article))
 
-        chosen = {id(a) for a in secondaries}
-        remaining = [a for a in remaining if id(a) not in chosen]
+        spent = {publication_slug(lead)} if lead is not None else set()
+        by_length = sorted(remaining, key=_by_length)
+        fresh_by_length = [a for a in by_length if is_fresh(a)]
+        held_by_length = [a for a in by_length if not is_fresh(a)]
+
+        # One per publication first, fresh before held. Then relax the
+        # one-per-publication rule rather than leave a hole in the layout.
+        fill(fresh_by_length, distinct=True)
+        fill(held_by_length, distinct=True)
+        fill(fresh_by_length, distinct=False)
+        fill(held_by_length, distinct=False)
+
+        secondaries.sort(key=_by_length)
+        remaining = [a for a in remaining if id(a) not in placed]
 
     river = sorted(remaining, key=_by_recency)
 

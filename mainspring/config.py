@@ -59,6 +59,15 @@ SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "")
 #: Maximum number of stories to put on one front page.
 FRONT_PAGE_LIMIT = int(os.environ.get("FRONT_PAGE_LIMIT", "40"))
 
+#: How many days of the wire an edition carries, counting its own date.
+#:
+#: A handful of Substacks file one or two posts on a typical day, which is not a
+#: front page. So an edition is dated for the day it is built but draws on the
+#: preceding week, with the lead and secondary slots reserved for that day's new
+#: stories where there are any. Set to 1 for strict single-day editions, which is
+#: honest but usually thin.
+EDITION_WINDOW_DAYS = max(1, int(os.environ.get("EDITION_WINDOW_DAYS", "7")))
+
 #: Descriptive User-Agent so publications can identify (and contact) the bot.
 USER_AGENT = os.environ.get(
     "MAINSPRING_USER_AGENT",

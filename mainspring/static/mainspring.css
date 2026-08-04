@@ -1,0 +1,972 @@
+/* ==========================================================================
+   mainspring.css — the whole stylesheet.
+
+   One hand-written file, no framework, no preprocessor, no build step. Edit it
+   and reload.
+
+   Design notes, so the choices are legible to whoever edits this next:
+
+   Typefaces are local stacks only. Mainspring never makes a request to a font
+   CDN, because a page that phones home for its typography is not a private
+   page. That constraint sets the palette of available faces, and the pairing
+   leans into it: headlines are Times — the face Stanley Morison cut for a
+   newspaper — while body copy is Charter/Iowan Old Style, a book face with a
+   larger x-height that holds up at reading size. Display and text are
+   deliberately different families, not one family at two sizes.
+
+   The accent is process blue. Two-colour broadsheets printed black plus one
+   spot ink, and blue was as common as red on the stone. It also keeps the page
+   out of the warm-cream-and-terracotta register that every other generated
+   layout lands in.
+
+   No motion beyond link and focus states. A newspaper does not animate.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Tokens
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Newsprint, pulled cool rather than cream — cheap paper greys out. */
+  --paper: #f2f0ea;
+  --paper-deep: #e8e5dc;
+  --ink: #191813;
+  --ink-mid: #56534a;
+  --ink-faint: #857f72;
+  --rule: #c6c2b4;
+  --rule-strong: #191813;
+  --accent: #1b3a6b;          /* process blue: the second ink */
+  --accent-wash: #dfe3ec;
+
+  --display: "Times New Roman", Times, "Liberation Serif", "DejaVu Serif", serif;
+  --body: "Iowan Old Style", Charter, "Bitstream Charter", Georgia, "Times New Roman", serif;
+  --utility: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
+
+  --measure: 34em;            /* comfortable line length for running text */
+  --page: 1240px;
+  --gutter: clamp(1.1rem, 3.5vw, 2.75rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  /* Newsprint has texture; a faint vertical fibre keeps the flat colour from
+     reading as a web page background. Two hairline gradients, no image. */
+  background-image:
+    repeating-linear-gradient(90deg, rgba(25, 24, 19, 0.014) 0 1px, transparent 1px 3px);
+}
+
+.page {
+  max-width: var(--page);
+  margin: 0 auto;
+  padding: 0 var(--gutter) 4rem;
+}
+
+/* --------------------------------------------------------------------------
+   Rules
+   Hairlines carry the structure, so they get named classes rather than being
+   redeclared per component.
+   -------------------------------------------------------------------------- */
+
+.rule {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 0;
+}
+
+.rule--heavy {
+  border-top: 3px solid var(--rule-strong);
+}
+
+/* Thick over hairline: the double rule that closes a broadsheet masthead. */
+.rule--double {
+  border: 0;
+  border-top: 3px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+  height: 4px;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Utility type
+   Kickers, section labels, folios, cutlines. Sans, uppercase, tracked out —
+   the way a paper sets everything that is not headline or text.
+   -------------------------------------------------------------------------- */
+
+.label,
+.kicker,
+.meta,
+.folio {
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.kicker {
+  color: var(--accent);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.meta {
+  color: var(--ink-faint);
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Skybox — the slim utility strip above the masthead
+   -------------------------------------------------------------------------- */
+
+.skybox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.6rem 0 0.55rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.skybox nav {
+  display: flex;
+  gap: 1.35rem;
+  flex-wrap: wrap;
+}
+
+.skybox a {
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.skybox a:hover,
+.skybox a:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.skybox .dev-flag {
+  font-family: var(--utility);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--paper);
+  background: var(--accent);
+  padding: 0.15rem 0.45rem;
+}
+
+/* --------------------------------------------------------------------------
+   Masthead
+   -------------------------------------------------------------------------- */
+
+.masthead {
+  text-align: center;
+  padding: clamp(1.5rem, 4vw, 2.75rem) 0 0.75rem;
+}
+
+.masthead__name {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 9.5vw, 6.25rem);
+  line-height: 0.94;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--ink);
+}
+
+.masthead__name a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.masthead__tagline {
+  font-family: var(--body);
+  font-style: italic;
+  font-size: clamp(0.9rem, 1.6vw, 1.0625rem);
+  color: var(--ink-mid);
+  margin: 0.7rem auto 0;
+  max-width: 40ch;
+}
+
+/* The colophon: what this edition is actually made of, stated as fact.
+   Circulation is 1. That is the entire premise of the paper. */
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0 0.85rem;
+  padding: 0.55rem 0;
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--ink-mid);
+}
+
+.colophon span:not(:last-child)::after {
+  content: "·";
+  margin-left: 0.85rem;
+  color: var(--rule);
+}
+
+.colophon .colophon__date {
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   Front page — lead well and secondary rail
+   -------------------------------------------------------------------------- */
+
+.front {
+  display: grid;
+  grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
+  gap: 0 clamp(1.5rem, 3vw, 2.75rem);
+  padding-top: 1.75rem;
+}
+
+/* The vertical hairline between the lead well and the rail, drawn on the rail
+   so it never appears when the grid collapses to one column. */
+.front__rail {
+  border-left: 1px solid var(--rule);
+  padding-left: clamp(1.5rem, 3vw, 2.75rem);
+}
+
+.lead__headline {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2rem, 5.4vw, 3.5rem);
+  line-height: 1.03;
+  letter-spacing: -0.018em;
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+}
+
+.lead__headline a,
+.story__headline a,
+.river__headline a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.lead__headline a:hover,
+.lead__headline a:focus-visible,
+.story__headline a:hover,
+.story__headline a:focus-visible,
+.river__headline a:hover,
+.river__headline a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.14em;
+}
+
+.lead__standfirst {
+  font-family: var(--body);
+  font-style: italic;
+  font-size: clamp(1.05rem, 1.7vw, 1.3125rem);
+  line-height: 1.45;
+  color: var(--ink-mid);
+  margin: 0 0 1.1rem;
+  max-width: 46ch;
+}
+
+.lead__figure {
+  margin: 0 0 1rem;
+}
+
+.lead__figure img,
+.story__figure img {
+  display: block;
+  width: 100%;
+  /* Lead art runs landscape. Substack images arrive at every ratio, so a tall
+     one is cropped rather than allowed to push the fold off the screen. */
+  max-height: 26rem;
+  height: auto;
+  object-fit: cover;
+  object-position: center 40%;
+  /* Newsprint halftones lose saturation. A slight desaturation ties borrowed
+     images into the page instead of letting them fight it. */
+  filter: saturate(0.88) contrast(1.03);
+}
+
+.cutline {
+  font-family: var(--utility);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--rule);
+  margin-top: 0.4rem;
+}
+
+/* --------------------------------------------------------------------------
+   Secondary stories in the rail
+   -------------------------------------------------------------------------- */
+
+.story + .story {
+  margin-top: 1.35rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--rule);
+}
+
+.story__headline {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.4375rem;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.45rem;
+  text-wrap: balance;
+}
+
+.story__standfirst {
+  font-family: var(--body);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ink-mid);
+  margin: 0 0 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Section heads
+   -------------------------------------------------------------------------- */
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin: 2.75rem 0 0;
+  padding-bottom: 0.4rem;
+}
+
+.section-head::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--rule);
+  transform: translateY(-0.28em);
+}
+
+.section-head h2 {
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+
+.section-head .count {
+  font-family: var(--utility);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+}
+
+/* --------------------------------------------------------------------------
+   The river — remaining stories, in real columns
+   -------------------------------------------------------------------------- */
+
+.river {
+  columns: 3;
+  column-gap: clamp(1.5rem, 2.6vw, 2.5rem);
+  column-rule: 1px solid var(--rule);
+  padding-top: 1.4rem;
+}
+
+.river__group {
+  /* Keep a publication's standing head with its stories. */
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin-bottom: 1.6rem;
+}
+
+/* The standing head: publication as beat, the way a paper labels a desk. */
+.standing-head {
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--accent);
+}
+
+.standing-head a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.standing-head a:hover,
+.standing-head a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.river__item + .river__item {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--rule);
+}
+
+.river__headline {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  line-height: 1.2;
+  margin: 0 0 0.3rem;
+}
+
+.river__standfirst {
+  font-size: 0.875rem;
+  line-height: 1.48;
+  color: var(--ink-mid);
+  margin: 0 0 0.3rem;
+}
+
+/* --------------------------------------------------------------------------
+   Byline
+   -------------------------------------------------------------------------- */
+
+.byline {
+  font-family: var(--utility);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.byline strong {
+  color: var(--ink-mid);
+  font-weight: 700;
+}
+
+.byline a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+}
+
+.byline a:hover,
+.byline a:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   Article page
+   -------------------------------------------------------------------------- */
+
+.article {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding-top: 2rem;
+}
+
+.article__header {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1.2rem;
+  margin-bottom: 1.6rem;
+}
+
+.article__headline {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 4.6vw, 2.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.018em;
+  margin: 0 0 0.8rem;
+  text-wrap: balance;
+}
+
+.article__standfirst {
+  font-family: var(--body);
+  font-style: italic;
+  font-size: 1.1875rem;
+  line-height: 1.45;
+  color: var(--ink-mid);
+  margin: 0 0 1rem;
+}
+
+.article__byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+}
+
+.article__body {
+  font-size: 1.125rem;
+  line-height: 1.68;
+}
+
+.article__body > p:first-of-type::first-letter {
+  /* Drop cap. Idiomatic to the form and it marks where the text starts, which
+     matters on a page whose header is four stacked blocks. */
+  float: left;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 3.6em;
+  line-height: 0.82;
+  padding: 0.04em 0.08em 0 0;
+  color: var(--ink);
+}
+
+.article__body p {
+  margin: 0 0 1.15rem;
+}
+
+.article__body h1,
+.article__body h2,
+.article__body h3,
+.article__body h4 {
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -0.01em;
+  margin: 2rem 0 0.7rem;
+}
+
+.article__body h1,
+.article__body h2 {
+  font-size: 1.5rem;
+}
+
+.article__body h3,
+.article__body h4 {
+  font-size: 1.25rem;
+}
+
+.article__body a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+}
+
+.article__body a:hover,
+.article__body a:focus-visible {
+  color: var(--accent);
+}
+
+.article__body blockquote {
+  margin: 1.5rem 0;
+  padding-left: 1.15rem;
+  border-left: 2px solid var(--accent);
+  font-style: italic;
+  color: var(--ink-mid);
+}
+
+.article__body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.article__body figure {
+  margin: 1.75rem 0;
+}
+
+.article__body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  filter: saturate(0.9) contrast(1.02);
+}
+
+.article__body figcaption {
+  font-family: var(--utility);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--rule);
+  margin-top: 0.4rem;
+}
+
+.article__body ul,
+.article__body ol {
+  margin: 0 0 1.15rem;
+  padding-left: 1.4rem;
+}
+
+.article__body li {
+  margin-bottom: 0.4rem;
+}
+
+.article__body hr {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  margin: 2rem 0;
+}
+
+.article__body pre {
+  overflow-x: auto;
+  background: var(--paper-deep);
+  padding: 0.9rem 1rem;
+  font-size: 0.875rem;
+  border-left: 2px solid var(--rule);
+}
+
+.article__body code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.article__body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  margin: 0 0 1.15rem;
+}
+
+.article__body th,
+.article__body td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+/* Wide content scrolls inside itself rather than pushing the page sideways. */
+.scroller {
+  overflow-x: auto;
+}
+
+.article__footer {
+  margin-top: 2.25rem;
+  padding-top: 1.2rem;
+  border-top: 3px solid var(--rule-strong);
+}
+
+.source-link {
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+
+.source-link:hover,
+.source-link:focus-visible {
+  background: var(--accent-wash);
+}
+
+/* --------------------------------------------------------------------------
+   Index pages — publication, archive, publication list
+   -------------------------------------------------------------------------- */
+
+.page-head {
+  padding: 2rem 0 1.2rem;
+  border-bottom: 3px solid var(--rule-strong);
+}
+
+.page-head h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(1.9rem, 5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.018em;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.page-head p {
+  margin: 0;
+  color: var(--ink-mid);
+  font-style: italic;
+  max-width: var(--measure);
+}
+
+.listing {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.listing > li {
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 0 1.5rem;
+  align-items: baseline;
+}
+
+.listing__date {
+  font-family: var(--utility);
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  padding-top: 0.3rem;
+}
+
+.listing__headline {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1.15;
+  margin: 0 0 0.35rem;
+}
+
+.listing__headline a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.listing__headline a:hover,
+.listing__headline a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.listing__standfirst {
+  margin: 0 0 0.35rem;
+  color: var(--ink-mid);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  max-width: 60ch;
+}
+
+/* Publication directory: a card per desk, ruled not boxed. */
+.desks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.desk {
+  padding: 1.2rem 1.4rem 1.3rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.desk h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.3125rem;
+  line-height: 1.12;
+  margin: 0.4rem 0 0.4rem;
+}
+
+.desk h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.desk h2 a:hover,
+.desk h2 a:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.desk p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-mid);
+}
+
+.tier {
+  font-family: var(--utility);
+  font-size: 0.625rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--rule);
+  color: var(--ink-faint);
+}
+
+.tier--paid {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   Empty state — an invitation, not an apology
+   -------------------------------------------------------------------------- */
+
+.empty {
+  max-width: var(--measure);
+  margin: 3.5rem auto;
+  padding: 1.6rem 0 0;
+  border-top: 3px solid var(--rule-strong);
+}
+
+.empty h2 {
+  font-family: var(--display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+}
+
+.empty p {
+  margin: 0 0 0.8rem;
+  color: var(--ink-mid);
+}
+
+.empty code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--paper-deep);
+  padding: 0.1rem 0.3rem;
+}
+
+/* --------------------------------------------------------------------------
+   Folio — the footer bar, where a newspaper puts the page furniture
+   -------------------------------------------------------------------------- */
+
+.folio {
+  margin-top: 3.5rem;
+  padding-top: 0.7rem;
+  border-top: 3px solid var(--rule-strong);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.folio a {
+  color: var(--ink-mid);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+}
+
+.folio a:hover,
+.folio a:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.folio nav {
+  display: flex;
+  gap: 1.35rem;
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+   Quality floor
+   -------------------------------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Narrower pages
+   The grid collapses in two steps: rail below the lead well first, then the
+   river from three columns to two to one.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 62rem) {
+  .river {
+    columns: 2;
+  }
+}
+
+@media (max-width: 48rem) {
+  .front {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .front__rail {
+    border-left: 0;
+    padding-left: 0;
+    margin-top: 1.6rem;
+    padding-top: 1.35rem;
+    border-top: 3px solid var(--rule-strong);
+  }
+
+  .river {
+    columns: 1;
+    column-rule: 0;
+  }
+
+  .listing > li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.35rem;
+  }
+
+  .listing__date {
+    padding-top: 0;
+  }
+
+  .article__body {
+    font-size: 1.0625rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Print — it is a newspaper, after all
+   -------------------------------------------------------------------------- */
+
+@media print {
+  :root {
+    --paper: #fff;
+  }
+
+  body {
+    background-image: none;
+    font-size: 10pt;
+  }
+
+  .skybox,
+  .folio nav {
+    display: none;
+  }
+
+  .river {
+    columns: 3;
+  }
+
+  a {
+    color: inherit;
+  }
+}

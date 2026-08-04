@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Publications — {{ site_name }}{% endblock %}
+{% block description %}The {{ publications|length }} publications this edition is built from.{% endblock %}
+
+{% block tagline %}<p class="masthead__tagline">Publications</p>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="kicker">The desks</span>
+  <h1>Publications</h1>
+  <p>Every publication in <code>subscriptions.yaml</code>. Free ones are ingested over RSS; paid ones wait on email ingestion.</p>
+</div>
+
+<div class="desks">
+  {% for publication in publications %}
+  <section class="desk">
+    <span class="tier {{ 'tier--paid' if publication.tier == 'paid' else '' }}">{{ publication.tier }}</span>
+    <h2><a href="{{ rel }}{{ publication.href }}">{{ publication.name }}</a></h2>
+    <p>
+      {{ publication.article_count }} stor{{ 'y' if publication.article_count == 1 else 'ies' }}
+      {%- if publication.latest_date_short %} · latest {{ publication.latest_date_short }}{% endif -%}
+    </p>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

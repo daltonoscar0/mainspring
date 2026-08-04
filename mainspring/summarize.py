@@ -142,7 +142,10 @@ def _placeholder(text: str) -> str:
     when reviewing a built site.
     """
     words = " ".join(text.split()[:DEV_WORDS])
-    return f"[DEV] {words}…" if words else "[DEV] No body text."
+    if not words:
+        return "[DEV] No body text."
+    # Trailing punctuation would sit next to the ellipsis ("heads.…").
+    return f"[DEV] {words.rstrip('.,;:—- ')}…"
 
 
 def _tidy(summary: str) -> str:

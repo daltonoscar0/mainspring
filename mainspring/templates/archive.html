@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Archive — {{ site_name }}{% endblock %}
+{% block description %}Every edition of {{ site_name }} built so far — {{ editions|length }} in all.{% endblock %}
+
+{% block tagline %}<p class="masthead__tagline">Archive</p>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="kicker">Back numbers</span>
+  <h1>Archive</h1>
+  <p>{{ editions|length }} edition{{ '' if editions|length == 1 else 's' }}, newest first. Each one is the front page as it stood that day.</p>
+</div>
+
+{% if editions %}
+<ul class="listing">
+  {% for edition in editions %}
+  <li>
+    <span class="listing__date">No. {{ edition.number }}<br>{{ edition.date_long }}</span>
+    <div>
+      <h2 class="listing__headline"><a href="{{ rel }}{{ edition.href }}">{{ edition.lead_title or 'No lead story' }}</a></h2>
+      <p class="byline">
+        {{ edition.article_count }} stor{{ 'y' if edition.article_count == 1 else 'ies' }}
+        {%- if edition.lead_publication %} · led by <strong>{{ edition.lead_publication }}</strong>{% endif -%}
+      </p>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty">
+  <h2>No editions yet</h2>
+  <p>Build one and it appears here:</p>
+  <p><code>DEV_MODE=1 python scripts/build_edition.py</code></p>
+</div>
+{% endif %}
+{% endblock %}

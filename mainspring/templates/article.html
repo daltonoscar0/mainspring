@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% import "_story.html" as story %}
+
+{% block title %}{{ article.title }} — {{ article.publication_name }}{% endblock %}
+{% block description %}{{ article.standfirst|default(article.title, true)|truncate(180, true, '…') }}{% endblock %}
+
+{# The masthead tagline is replaced by the publication's standing head, so the
+   page announces which desk you are reading rather than repeating the paper's
+   motto on every article. #}
+{% block tagline %}
+<p class="masthead__tagline"><a href="{{ rel }}{{ article.publication_href }}"
+   style="color: inherit; text-decoration: none;">{{ article.publication_name }}</a></p>
+{% endblock %}
+
+{% block content %}
+<article class="article">
+
+  <header class="article__header">
+    <span class="kicker">{{ article.publication_name }}</span>
+    <h2 class="article__headline">{{ article.title }}</h2>
+    {% if article.standfirst %}<p class="article__standfirst">{{ article.standfirst }}</p>{% endif %}
+    <div class="article__byline">
+      {{ story.byline(article, rel) }}
+    </div>
+  </header>
+
+  {% if article.body_html %}
+  <div class="article__body">{{ article.body_html }}</div>
+  {% else %}
+  <div class="article__body">
+    <p>No body text was captured for this post. Read it at the source below.</p>
+  </div>
+  {% endif %}
+
+  <footer class="article__footer">
+    <p><a class="source-link" href="{{ article.url }}" rel="noopener noreferrer nofollow"
+          target="_blank" referrerpolicy="no-referrer">Read the original at {{ article.publication_name }}</a></p>
+    <p class="byline" style="margin-top: 0.9rem;">
+      Filed under <a href="{{ rel }}{{ article.publication_href }}">{{ article.publication_name }}</a>
+      {%- if article.edition_href %} · <a href="{{ rel }}{{ article.edition_href }}">Edition of {{ article.date_long }}</a>{% endif -%}
+    </p>
+  </footer>
+
+</article>
+{% endblock %}

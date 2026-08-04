@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ publication.name }} — {{ site_name }}{% endblock %}
+{% block description %}Every post from {{ publication.name }} in your edition: {{ publication.article_count }} stor{{ 'y' if publication.article_count == 1 else 'ies' }}.{% endblock %}
+
+{% block tagline %}<p class="masthead__tagline">Publications</p>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <span class="kicker">{{ 'Paid subscription' if publication.tier == 'paid' else 'Free subscription' }}</span>
+  <h1>{{ publication.name }}</h1>
+  <p>
+    {{ publication.article_count }} stor{{ 'y' if publication.article_count == 1 else 'ies' }} held locally{% if publication.lead_count %},
+    {{ publication.lead_count }} of which led the front page{% endif %}.
+    {% if publication.homepage_url %}
+    <a class="source-link" style="margin-left: 0.4rem;" href="{{ publication.homepage_url }}"
+       rel="noopener noreferrer nofollow" target="_blank" referrerpolicy="no-referrer">Visit {{ publication.name }}</a>
+    {% endif %}
+  </p>
+</div>
+
+{% if publication.articles %}
+<ul class="listing">
+  {% for article in publication.articles %}
+  <li>
+    <span class="listing__date">{{ article.date_short or 'Undated' }}</span>
+    <div>
+      <h2 class="listing__headline"><a href="{{ rel }}{{ article.href }}">{{ article.title }}</a></h2>
+      {% if article.standfirst %}<p class="listing__standfirst">{{ article.standfirst|truncate(220, true, '…') }}</p>{% endif %}
+      <p class="byline">
+        {%- if article.author and article.author != publication.name %}<strong>{{ article.author }}</strong> · {% endif -%}
+        {{ "{:,}".format(article.word_count) }} words
+      </p>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty">
+  <h2>Nothing held yet</h2>
+  <p>No posts from {{ publication.name }} have been ingested. The next ingest will pick up whatever its feed is carrying.</p>
+</div>
+{% endif %}
+{% endblock %}

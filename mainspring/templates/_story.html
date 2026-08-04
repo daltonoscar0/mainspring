@@ -1,0 +1,62 @@
+{#
+  _story.html — the macros that render one story in each of the three sizes.
+
+  Kept in one file so the three headline treatments stay visibly related: they
+  differ in scale and in how much of the story they show, not in structure.
+  Every macro takes an `article` view dict from mainspring.sitegen.build and the
+  page's `rel` prefix.
+#}
+
+{% macro byline(article, rel, show_words=true) %}
+<p class="byline">
+  <a href="{{ rel }}{{ article.publication_href }}">{{ article.publication_name }}</a>
+  {%- if article.author and article.author != article.publication_name %} · <strong>{{ article.author }}</strong>{% endif -%}
+  {%- if article.date_short %} · {{ article.date_short }}{% endif -%}
+  {%- if show_words and article.word_count %} · {{ "{:,}".format(article.word_count) }} words{% endif -%}
+</p>
+{% endmacro %}
+
+
+{# The lead: largest headline, hero image, full standfirst. One per edition. #}
+{% macro lead(article, rel) %}
+<article class="lead">
+  <span class="kicker">{{ article.publication_name }}</span>
+  <h2 class="lead__headline"><a href="{{ rel }}{{ article.href }}">{{ article.title }}</a></h2>
+  {% if article.standfirst %}<p class="lead__standfirst">{{ article.standfirst }}</p>{% endif %}
+  {% if article.hero_image_url %}
+  <figure class="lead__figure">
+    <img src="{{ article.hero_image_url }}" alt="{{ article.hero_image_alt or '' }}"
+         loading="eager" referrerpolicy="no-referrer">
+    {% if article.hero_image_alt %}<figcaption class="cutline">{{ article.hero_image_alt }}</figcaption>{% endif %}
+  </figure>
+  {% endif %}
+  {{ byline(article, rel) }}
+</article>
+{% endmacro %}
+
+
+{# A secondary: medium headline, trimmed standfirst, no image. Rail only. #}
+{% macro secondary(article, rel) %}
+<article class="story">
+  <span class="kicker">{{ article.publication_name }}</span>
+  <h3 class="story__headline"><a href="{{ rel }}{{ article.href }}">{{ article.title }}</a></h3>
+  {% if article.standfirst %}<p class="story__standfirst">{{ article.standfirst|truncate(190, true, '…') }}</p>{% endif %}
+  {{ byline(article, rel, show_words=false) }}
+</article>
+{% endmacro %}
+
+
+{# A river item: small headline, one-line standfirst. Grouped under a standing
+   head, so the publication name is not repeated here. #}
+{% macro river_item(article, rel) %}
+<article class="river__item">
+  <h3 class="river__headline"><a href="{{ rel }}{{ article.href }}">{{ article.title }}</a></h3>
+  {% if article.standfirst %}<p class="river__standfirst">{{ article.standfirst|truncate(120, true, '…') }}</p>{% endif %}
+  <p class="byline">
+    {%- if article.author and article.author != article.publication_name -%}
+      <strong>{{ article.author }}</strong>{% if article.date_short %} · {% endif %}
+    {%- endif -%}
+    {{ article.date_short }}
+  </p>
+</article>
+{% endmacro %}

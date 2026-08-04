@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% import "_story.html" as story %}
+
+{% block title %}{{ site_name }} — {{ edition.date_long }}{% endblock %}
+{% block description %}{{ site_name }} for {{ edition.date_long }}: {{ edition.article_count }} stories from {{ edition.publication_count }} publications you subscribe to.{% endblock %}
+
+{% block colophon %}
+<div class="colophon">
+  <span>No. {{ edition.number }}</span>
+  <span class="colophon__date">{{ edition.date_long }}</span>
+  <span>{{ edition.publication_count }} publication{{ '' if edition.publication_count == 1 else 's' }}</span>
+  <span>{{ edition.article_count }} dispatch{{ '' if edition.article_count == 1 else 'es' }}</span>
+  {% if edition.fresh_count %}<span>{{ edition.fresh_count }} filed today</span>{% endif %}
+  <span>Circulation: 1</span>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if ranking.lead %}
+
+<div class="front">
+  <div class="front__well">
+    {{ story.lead(ranking.lead, rel) }}
+  </div>
+
+  {% if ranking.secondaries %}
+  <div class="front__rail">
+    {% for article in ranking.secondaries %}{{ story.secondary(article, rel) }}{% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+{% if ranking.river_groups %}
+<div class="section-head">
+  <h2>The rest of the wire</h2>
+  <span class="count">
+    {{ ranking.river_count }} stor{{ 'y' if ranking.river_count == 1 else 'ies' }}
+    {%- if edition.window_days > 1 %} · past {{ edition.window_days }} days{% endif -%}
+  </span>
+</div>
+
+<div class="river">
+  {% for group in ranking.river_groups %}
+  <section class="river__group">
+    <h3 class="standing-head"><a href="{{ rel }}{{ group.href }}">{{ group.name }}</a></h3>
+    {% for article in group.articles %}{{ story.river_item(article, rel) }}{% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if edition.previous %}
+<div class="section-head">
+  <h2>Earlier editions</h2>
+</div>
+<ul class="listing">
+  {% for previous in edition.previous %}
+  <li>
+    <span class="listing__date">{{ previous.date_medium }}</span>
+    <div>
+      <h3 class="listing__headline"><a href="{{ rel }}{{ previous.href }}">{{ previous.lead_title or 'No lead story' }}</a></h3>
+      <p class="byline">{{ previous.article_count }} stor{{ 'y' if previous.article_count == 1 else 'ies' }}</p>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% else %}
+
+<div class="empty">
+  <h2>No edition yet</h2>
+  <p>Nothing has been ingested for {{ edition.date_long }}. Run an ingest and this page fills itself in:</p>
+  <p><code>DEV_MODE=1 python scripts/build_edition.py</code></p>
+  <p>If that returns no articles, check that <code>subscriptions.yaml</code> lists publications whose feeds resolve.</p>
+</div>
+
+{% endif %}
+{% endblock %}

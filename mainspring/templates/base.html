@@ -1,0 +1,61 @@
+{#
+  base.html — the page shell every other template extends.
+
+  Every URL is built from `rel`, the relative path back to the site root for
+  the page being rendered ("" at the root, "../" one level down). That is what
+  lets the site work unchanged at a domain root and under a GitHub Pages project
+  subpath, with no base URL baked in anywhere.
+#}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ site_name }}{% endblock %}</title>
+<meta name="description" content="{% block description %}{{ site_name }} — a daily edition built from your own subscriptions.{% endblock %}">
+{# Nothing is measured, so there is nothing to opt out of. Stated explicitly
+   because a reader has no other way to know. #}
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="generator" content="Mainspring {{ version }}">
+<link rel="stylesheet" href="{{ rel }}static/mainspring.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="skybox">
+    <nav aria-label="Sections">
+      <a href="{{ rel }}index.html">Front page</a>
+      <a href="{{ rel }}publications/index.html">Publications</a>
+      <a href="{{ rel }}archive.html">Archive</a>
+    </nav>
+    <span class="meta">
+      {%- if dev_mode %}<span class="dev-flag">Dev build</span> {% endif -%}
+      Built {{ built_at }}
+    </span>
+  </div>
+
+  <header class="masthead">
+    <h1 class="masthead__name"><a href="{{ rel }}index.html">{{ site_name }}</a></h1>
+    {% block tagline %}<p class="masthead__tagline">{{ site_tagline }}</p>{% endblock %}
+  </header>
+
+  <hr class="rule">
+  {% block colophon %}{% endblock %}
+  <hr class="rule--double">
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="folio">
+    <span>{{ site_name }} · Set and printed locally · No trackers, no third parties</span>
+    <nav aria-label="Footer">
+      <a href="{{ rel }}index.html">Front page</a>
+      <a href="{{ rel }}publications/index.html">Publications</a>
+      <a href="{{ rel }}archive.html">Archive</a>
+    </nav>
+  </footer>
+
+</div>
+</body>
+</html>

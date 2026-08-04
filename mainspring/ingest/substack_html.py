@@ -79,9 +79,17 @@ DROP_TAGS: frozenset[str] = frozenset(
 _TEXT_BLOCKS: frozenset[str] = frozenset(
     {
         "p", "h1", "h2", "h3", "h4", "h5", "h6",
-        "blockquote", "li", "figcaption", "pre", "tr", "caption",
+        "blockquote", "li", "pre", "tr", "caption",
     }
 )
+
+#: Elements kept in the HTML but left out of the plain text.
+#:
+#: Captions only. A Substack post very often opens with its hero image, so its
+#: caption would otherwise be the first thing the summarizer reads — and a
+#: standfirst that begins "Photo by someone on Unsplash" is worse than no
+#: standfirst. The caption still renders on the article page.
+_TEXT_EXCLUDED: frozenset[str] = frozenset({"figcaption"})
 
 # ---------------------------------------------------------------------------
 # Chrome detection
@@ -330,6 +338,8 @@ def _to_text(root: Tag) -> str:
                 if text:
                     parts.append(text)
             elif isinstance(child, Tag):
+                if child.name in _TEXT_EXCLUDED:
+                    continue
                 if child.name in _TEXT_BLOCKS:
                     # Collapse whitespace *inside* the block before adding the
                     # boundary markers, so source line wrapping inside a
