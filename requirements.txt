@@ -1,0 +1,35 @@
+# Core web layer — serves the built site and the JSON API.
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+
+# Persistence. SQLite via SQLAlchemy ORM; no external database server.
+sqlalchemy>=2.0.30
+
+# Ingestion.
+feedparser>=6.0.11
+requests>=2.31.0
+beautifulsoup4>=4.12.3
+lxml>=5.2.1
+python-dateutil>=2.9.0
+
+# Subscriptions config.
+PyYAML>=6.0.1
+
+# Static site generation.
+jinja2>=3.1.4
+
+# Scheduled ingest + build.
+apscheduler>=3.10.4
+
+# Tests.
+pytest>=8.2.0
+
+# ---------------------------------------------------------------------------
+# Local summarization (optional at install time, lazily imported at runtime).
+# ---------------------------------------------------------------------------
+# These are only needed when DEV_MODE is unset — i.e. when you want real
+# standfirsts from DistilBART rather than dev placeholders. They are large
+# (~700 MB for torch alone), so they are listed last and imported lazily in
+# mainspring/summarize.py. Everything else in Mainspring works without them.
+transformers>=4.40.0
+torch>=2.3.0

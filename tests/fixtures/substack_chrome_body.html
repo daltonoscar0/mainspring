@@ -1,0 +1,119 @@
+<!--
+  A post body carrying every kind of Substack furniture the cleaner has to
+  remove, in the markup shapes Substack actually emits: subscription widgets,
+  share and comment calls to action, the like/restack bar, a paywall
+  interstitial, post recommendations, a poll embed, the email footer with its
+  unsubscribe links, and an open-tracking pixel.
+
+  Hand-written rather than captured, because no single real post contains all of
+  them at once — a free post has no paywall, a web post has no email footer.
+  The individual markup patterns are taken from real Substack output; see
+  construction_physics_feed.xml and substack_post_page.html for the unmodified
+  article. Every element that must survive cleaning is marked KEEP in its text
+  so the assertions read clearly.
+-->
+<div class="body markup">
+
+  <div class="subscription-widget-wrap" data-component-name="SubscribeWidget">
+    <div class="subscription-widget show-subscribe">
+      <h3 class="subscription-widget-title">Subscribe to Fixture Weekly</h3>
+      <p>Thousands of paid subscribers</p>
+      <form class="form" action="https://fixture.substack.com/api/v1/free">
+        <input type="email" placeholder="Type your email…" />
+        <button type="submit" class="button primary">Subscribe</button>
+      </form>
+    </div>
+  </div>
+
+  <p>KEEP-INTRO This is the opening paragraph of the post, and it should
+  survive cleaning intact along with its <a href="https://example.org/cited">cited
+  source</a>.</p>
+
+  <p><a class="button primary" href="https://fixture.substack.com/subscribe?utm_source=post">Subscribe now</a></p>
+
+  <h2>KEEP-HEADING A section heading</h2>
+
+  <div class="captioned-image-container">
+    <figure>
+      <a class="image-link image2 is-viewable-img" href="https://substackcdn.com/image/fetch/f_auto/https%3A%2F%2Fexample.com%2Fchart.png" target="_blank">
+        <div class="image2-inset">
+          <source type="image/webp" />
+          <img alt="KEEP-ALT A chart of quarterly output" class="sizing-normal" height="462" width="556"
+               src="https://substackcdn.com/image/fetch/w_1456,f_auto/https%3A%2F%2Fexample.com%2Fchart.png" />
+          <div class="image-link-expand">
+            <div class="pencraft pc-display-flex pc-gap-8 pc-reset">
+              <button class="pencraft pc-reset icon-container restack-image" type="button">
+                <svg viewBox="0 0 20 20"><path d="M2 7"></path></svg>
+              </button>
+              <button class="pencraft pc-reset icon-container view-image" type="button">
+                <svg viewBox="0 0 24 24"><polyline points="15 3 21 3"></polyline></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </a>
+      <figcaption class="image-caption">KEEP-CAPTION Output by quarter, via
+        <a href="https://example.org/statistics">the statistical office</a>.</figcaption>
+    </figure>
+  </div>
+
+  <blockquote><p>KEEP-QUOTE A pulled quote from the piece.</p></blockquote>
+
+  <ul>
+    <li>KEEP-BULLET-ONE First item</li>
+    <li>KEEP-BULLET-TWO Second item</li>
+  </ul>
+
+  <div class="post-ufi">
+    <div class="like-button-container">
+      <button class="like-button" type="button">Like</button>
+    </div>
+    <div class="post-ufi-comment-button">
+      <a href="https://fixture.substack.com/p/the-post/comments">Leave a comment</a>
+    </div>
+    <div class="post-ufi-button restack">
+      <button type="button">Restack</button>
+    </div>
+  </div>
+
+  <p>KEEP-BODY A second body paragraph, appearing after the engagement bar, that
+  must not be swept up with it.</p>
+
+  <div class="poll-embed">
+    <h4>Which do you prefer?</h4>
+    <form><button type="button">Option A</button><button type="button">Option B</button></form>
+  </div>
+
+  <div class="digest-post-embed" data-component-name="EmbeddedPostWithoutAuthor">
+    <a href="https://other.substack.com/p/some-other-post">
+      <div class="embedded-publication">Some Other Publication</div>
+      <div class="pencraft">Another post you might like</div>
+    </a>
+  </div>
+
+  <p>KEEP-CLOSING The closing paragraph. Readers who want more can
+  <a href="https://example.org/further-reading">read the underlying paper</a>,
+  which is a real citation and not a call to action.</p>
+
+  <div class="paywall">
+    <div class="paywall-title">This post is for paid subscribers</div>
+    <a class="button primary" href="https://fixture.substack.com/subscribe">Upgrade to paid</a>
+  </div>
+
+  <div class="subscribe-footer">
+    <hr />
+    <p>Thanks for reading Fixture Weekly!</p>
+    <a href="https://fixture.substack.com/subscribe">Subscribe for free</a>
+  </div>
+
+  <div class="email-footer">
+    <p>You are receiving this because you subscribed at fixture.substack.com.</p>
+    <a href="https://substack.com/app-link/post?publication_id=1">Read in app</a>
+    <a href="https://fixture.substack.com/account/unsubscribe?token=abc">Unsubscribe</a>
+    <a href="https://fixture.substack.com/account">Manage your subscription</a>
+  </div>
+
+  <img src="https://substack.com/api/v1/email-open?token=deadbeef" width="1" height="1" alt="" />
+  <script>window.__SUBSTACK__ = {trackOpen: true};</script>
+
+</div>

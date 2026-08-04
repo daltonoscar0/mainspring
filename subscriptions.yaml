@@ -1,0 +1,60 @@
+# Mainspring subscriptions
+#
+# The publications your edition is built from. This file is the only place
+# Mainspring learns what you read; nothing is discovered, recommended, or
+# phoned home about.
+#
+# Fields
+#   name          Display name. Appears in bylines and section rules.
+#   slug          URL-safe id. Becomes publications/<slug>.html, so changing it
+#                 breaks existing links. Pick once.
+#   feed_url      RSS endpoint. For a Substack this is <host>/feed — that works
+#                 for custom domains (www.example.com/feed) as well as
+#                 example.substack.com/feed.
+#   tier          free  ingested over RSS. Works today.
+#                 paid  ingested from the publication's email, which already
+#                       contains the full post. Milestone 2; skipped for now.
+#   homepage_url  Optional. Defaults to feed_url with /feed removed.
+#
+# The seed list below is six free publications that post often, so a fresh
+# install has a full front page on day one. Replace them with your own.
+
+publications:
+  - name: Astral Codex Ten
+    slug: astral-codex-ten
+    feed_url: https://www.astralcodexten.com/feed
+    tier: free
+
+  - name: Construction Physics
+    slug: construction-physics
+    feed_url: https://www.construction-physics.com/feed
+    tier: free
+
+  - name: Noahpinion
+    slug: noahpinion
+    feed_url: https://www.noahpinion.blog/feed
+    tier: free
+
+  - name: The Honest Broker
+    slug: the-honest-broker
+    feed_url: https://www.honest-broker.com/feed
+    tier: free
+
+  - name: Culture Study
+    slug: culture-study
+    feed_url: https://annehelen.substack.com/feed
+    tier: free
+
+  - name: Read Max
+    slug: read-max
+    feed_url: https://www.readmax.com/feed
+    tier: free
+
+  # Paid publications are declared the same way but with tier: paid. The RSS
+  # ingester skips them (a paid feed carries only a teaser); the email ingester
+  # in Milestone 2 will pick them up. Uncomment and edit once that lands.
+  #
+  # - name: A Paid Publication
+  #   slug: a-paid-publication
+  #   feed_url: https://paid.substack.com/feed
+  #   tier: paid
