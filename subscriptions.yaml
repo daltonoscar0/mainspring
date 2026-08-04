@@ -45,9 +45,9 @@ publications:
     feed_url: https://annehelen.substack.com/feed
     tier: free
 
-  - name: Read Max
-    slug: read-max
-    feed_url: https://www.readmax.com/feed
+  - name: Silver Bulletin
+    slug: silver-bulletin
+    feed_url: https://www.natesilver.net/feed
     tier: free
 
   # Paid publications are declared the same way but with tier: paid. The RSS
