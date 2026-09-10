@@ -34,11 +34,11 @@ from .models import Article
 
 logger = logging.getLogger(__name__)
 
-#: HuggingFace model id. Local cache only — nothing is sent anywhere.
+#: HuggingFace model id. Local cache only, nothing is sent anywhere.
 MODEL_NAME = "sshleifer/distilbart-cnn-12-6"
 
 #: Output length bounds in tokens. A standfirst is one or two sentences; the old
-#: 40–150 range produced deks that overwhelmed the headline, so the ceiling is
+#: 40-150 range produced deks that overwhelmed the headline, so the ceiling is
 #: lower here.
 MIN_TOKENS = 25
 MAX_TOKENS = 90
@@ -47,7 +47,7 @@ MAX_TOKENS = 90
 #: a Substack post is almost always where its thesis is.
 MAX_INPUT_TOKENS = 1024
 
-#: Bodies shorter than this are not worth summarizing — the opening sentences
+#: Bodies shorter than this are not worth summarizing, the opening sentences
 #: already are the summary.
 MIN_BODY_CHARS = 240
 
@@ -102,7 +102,7 @@ def load_model() -> None:
         _model = BartForConditionalGeneration.from_pretrained(MODEL_NAME)
         # eval() disables dropout, making inference faster and deterministic.
         _model.eval()
-    except Exception as exc:  # noqa: BLE001 — surfaced as a startup failure
+    except Exception as exc:  # noqa: BLE001, surfaced as a startup failure
         raise RuntimeError(f"Could not load {MODEL_NAME}: {exc}") from exc
 
     logger.info("Model ready.")
@@ -225,7 +225,7 @@ def standfirst(text: str) -> str:
         tidied = _tidy(decoded)
         return tidied or _first_sentences(text)
 
-    except Exception as exc:  # noqa: BLE001 — degrade to the lede, never crash a build
+    except Exception as exc:  # noqa: BLE001, degrade to the lede, never crash a build
         logger.warning("Standfirst generation failed, falling back to lede: %s", exc)
         return _first_sentences(text)
 
@@ -312,7 +312,7 @@ def _generate_one(article_id: int) -> int:
         logger.debug("Standfirst: %s", article.title[:60])
         return 1
 
-    except Exception as exc:  # noqa: BLE001 — one bad article must not end the batch
+    except Exception as exc:  # noqa: BLE001, one bad article must not end the batch
         logger.error("Failed on article %s: %s", article_id, exc)
         db.rollback()
         try:
@@ -320,7 +320,7 @@ def _generate_one(article_id: int) -> int:
             if article is not None:
                 article.summarizing = False
                 db.commit()
-        except Exception:  # noqa: BLE001 — best effort
+        except Exception:  # noqa: BLE001, best effort
             pass
         return 0
     finally:

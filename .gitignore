@@ -25,3 +25,11 @@ venv/
 # keep to yourself, so it stays out of the repository. Copy the example to start:
 #   cp subscriptions.example.yaml subscriptions.yaml
 subscriptions.yaml
+CLAUDE.md
+AGENTS.md
+.claude/
+.agentnotes/
+.cursor/
+.mcp.json
+tasks/lessons.md
+tasks/todo.md

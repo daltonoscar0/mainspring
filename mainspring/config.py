@@ -44,8 +44,8 @@ SUBSCRIPTIONS_PATH = Path(
 
 #: Shipped example list, used when no ``subscriptions.yaml`` exists.
 #:
-#: ``subscriptions.yaml`` is gitignored — what you read is exactly what this
-#: project exists to keep to yourself — so a fresh clone has no list at all.
+#: ``subscriptions.yaml`` is gitignored, what you read is exactly what this
+#: project exists to keep to yourself, so a fresh clone has no list at all.
 #: Falling back to the example means ``build_edition.py`` produces a real edition
 #: immediately instead of failing on a missing file.
 EXAMPLE_SUBSCRIPTIONS_PATH = REPO_ROOT / "subscriptions.example.yaml"
@@ -81,8 +81,8 @@ EDITION_WINDOW_DAYS = max(1, int(os.environ.get("EDITION_WINDOW_DAYS", "7")))
 
 #: Newest entries to take from any one feed per ingest.
 #:
-#: Substack feeds carry 20. News sites carry far more — Truthout and Portside
-#: ship 100 — and when a feed holds only excerpts each entry costs a separate
+#: Substack feeds carry 20. News sites carry far more, Truthout and Portside
+#: ship 100, and when a feed holds only excerpts each entry costs a separate
 #: page fetch, so an uncapped ingest would make hundreds of requests to a single
 #: publisher. Feeds are newest-first, so the cap simply means older items wait
 #: for the archive rather than being lost.
@@ -133,9 +133,9 @@ Tier = Literal["free", "paid"]
 
 #: Which river a publication files into.
 #:
-#: ``newsletter`` — an individual writer, filing occasionally. The premise of the
+#: ``newsletter``, an individual writer, filing occasionally. The premise of the
 #: paper, so this is the default and its river runs first.
-#: ``wire`` — a news outlet, filing many times a day. Useful, but it will bury
+#: ``wire``, a news outlet, filing many times a day. Useful, but it will bury
 #: everything else if the two are pooled, which is why they are not.
 Kind = Literal["newsletter", "wire"]
 
@@ -147,7 +147,7 @@ KIND_LABELS: dict[str, str] = {
     "wire": "The wire",
 }
 
-#: Order the rivers appear in. Newsletters first — that is what this is for.
+#: Order the rivers appear in. Newsletters first, that is what this is for.
 KIND_ORDER: tuple[str, ...] = ("newsletter", "wire")
 
 

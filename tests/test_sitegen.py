@@ -693,7 +693,7 @@ class TestBuildOutput:
         report, _ = built
         assert report.articles == 9
         assert report.publications == 3
-        # One edition per date that has an article: Aug 1–4 plus the undated
+        # One edition per date that has an article: Aug 1-4 plus the undated
         # post, which is filed under its ingest date (also Aug 4).
         assert report.editions == 4
 
@@ -736,7 +736,7 @@ class TestFrontPage:
         _, site_dir = built
         html = read(site_dir, "index.html")
         assert "The Mainspring" in html
-        # "Tuesday, August 4, 2026" — the long form, spelled out.
+        # "Tuesday, August 4, 2026", the long form, spelled out.
         assert "Tuesday, August 4, 2026" in html
 
     def test_headline_hierarchy_is_present(self, built) -> None:

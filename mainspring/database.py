@@ -83,7 +83,7 @@ def init_db() -> None:
     registers the table definitions on ``Base.metadata`` before ``create_all``
     runs.
     """
-    from . import models  # noqa: F401 — registers tables on Base.metadata
+    from . import models  # noqa: F401, registers tables on Base.metadata
 
     engine = get_engine()
     Base.metadata.create_all(bind=engine)

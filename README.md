@@ -2,10 +2,10 @@
 
 # Mainspring
 
-> *"Intelligent discontent is the mainspring of civilization."* — Eugene V. Debs
+> *"Intelligent discontent is the mainspring of civilization."*, Eugene V. Debs
 
 A self-hosted, privacy-first reader that turns every Substack you subscribe to
-into a newspaper. Feeds go in; a front page comes out — lead story, secondaries,
+into a newspaper. Feeds go in; a front page comes out, lead story, secondaries,
 a multi-column river of everything else, with per-publication pages and a dated
 archive. Summaries are written by a model running on your own machine.
 **No API keys, no cloud services, no accounts, nothing leaving your hardware.**
@@ -36,7 +36,7 @@ read to servers you do not control. Mainspring does none of that:
 
 One honest caveat, spelled out rather than buried: article bodies reference
 images on Substack's CDN, so viewing a page still makes a request to that CDN.
-Every page sends `no-referrer`, so no URL or referrer is disclosed — but the
+Every page sends `no-referrer`, so no URL or referrer is disclosed, but the
 request happens. Mirroring images locally is on the roadmap.
 
 ---
@@ -80,8 +80,8 @@ pip install -r requirements.txt
 cp subscriptions.example.yaml subscriptions.yaml
 ```
 
-Then edit it. `subscriptions.yaml` is gitignored — what you read is exactly the
-sort of thing this project exists to keep to yourself — and if you skip this step
+Then edit it. `subscriptions.yaml` is gitignored, what you read is exactly the
+sort of thing this project exists to keep to yourself, and if you skip this step
 Mainspring falls back to the example list, so a fresh clone still builds a real
 edition on the first run.
 
@@ -93,7 +93,7 @@ publications:
     tier: free
 ```
 
-For any Substack the feed is the site plus `/feed` — that works for custom
+For any Substack the feed is the site plus `/feed`, that works for custom
 domains (`https://www.example.com/feed`) as well as
 `https://example.substack.com/feed`. Non-Substack feeds work too.
 
@@ -102,7 +102,7 @@ domains (`https://www.example.com/feed`) as well as
 | `name` | Display name, used in bylines and standing heads |
 | `slug` | URL-safe id; becomes `publications/<slug>.html`, so pick it once |
 | `feed_url` | RSS endpoint |
-| `tier` | `free` (over RSS, works today) or `paid` (over email — see the roadmap) |
+| `tier` | `free` (over RSS, works today) or `paid` (over email, see the roadmap) |
 | `kind` | `newsletter` (default) or `wire`; decides which river it files into |
 | `fetch_pages` | `false` to never fetch the post page, even for an excerpt feed |
 | `homepage_url` | Optional; defaults to `feed_url` with `/feed` removed |
@@ -113,11 +113,11 @@ newsletter from three days ago never appears. The front page carries a separate
 river for each, with its own reserved slots.
 
 `fetch_pages: false` is for a publisher whose feed is clean but whose article
-pages defeat the cleaner — Democracy Now wraps its transcripts in sidebars of
-guests, topics and links — or simply one you would rather not crawl.
+pages defeat the cleaner, Democracy Now wraps its transcripts in sidebars of
+guests, topics and links, or simply one you would rather not crawl.
 
 **Check publications before you add them.** A Substack can look healthy in a
-browser and still produce nothing here — the domain may belong to something else,
+browser and still produce nothing here, the domain may belong to something else,
 the publication may have moved and left a stale feed behind, or its posts may be
 paid and arrive as teasers. This checks all three and prints YAML you can paste:
 
@@ -140,9 +140,9 @@ python scripts/build_edition.py
 That ingests every free publication, writes a standfirst for each new post, and
 renders the site into `site/`. Open `site/index.html`.
 
-**First-run timeline:** model download 5–15 minutes (once, cached in
+**First-run timeline:** model download 5-15 minutes (once, cached in
 `~/.cache/huggingface/`); feed ingest a few seconds; summarizing ~100 posts
-20–60 minutes on CPU, 2–5 minutes on GPU. Use `--limit N` to cap the first run.
+20-60 minutes on CPU, 2-5 minutes on GPU. Use `--limit N` to cap the first run.
 
 ### 5. Serve it (optional)
 
@@ -166,7 +166,7 @@ DEV_MODE=1 python scripts/build_edition.py
 DEV_MODE=1 uvicorn mainspring.app:app
 ```
 
-In dev mode `transformers` and `torch` are never imported — nothing is
+In dev mode `transformers` and `torch` are never imported, nothing is
 downloaded, and no GPU is needed. Each post gets a `[DEV] …` dek from its first
 30 words, and a **Dev build** badge appears on every page so a placeholder is
 never mistaken for real output. The test suite runs in dev mode by design.
@@ -229,7 +229,7 @@ subscriptions.yaml
 
 ### The HTML cleaner
 
-One module understands Substack's markup, and both ingest paths use it — so an
+One module understands Substack's markup, and both ingest paths use it, so an
 emailed post and a fetched post produce identical article bodies.
 
 It works from an **allowlist**: only known-good tags survive, everything else is
@@ -245,7 +245,7 @@ summarizer.
 
 ### Headline hierarchy
 
-`sitegen/rank.py` is a pure function — no database, no clock — so the same
+`sitegen/rank.py` is a pure function, no database, no clock, so the same
 articles always produce the same page.
 
 - **Lead**: the longest article from whichever publication has gone longest
@@ -265,9 +265,9 @@ editions.
 
 ### Standfirsts
 
-The dek under each headline comes from `sshleifer/distilbart-cnn-12-6` — BART
-distilled and fine-tuned on news — run on your machine. Beam search with 4 beams,
-`no_repeat_ngram_size=3`, 25–90 tokens, input truncated at 1024. Sampling is off,
+The dek under each headline comes from `sshleifer/distilbart-cnn-12-6`, BART
+distilled and fine-tuned on news, run on your machine. Beam search with 4 beams,
+`no_repeat_ngram_size=3`, 25-90 tokens, input truncated at 1024. Sampling is off,
 so a rebuild produces no diff. If generation fails the article's opening
 sentences are used instead: a plain lede beats a hole in the page.
 
@@ -355,7 +355,7 @@ real Substack output saved under `tests/fixtures/`.
 
 Covered: RSS parsing into articles, dedup on re-ingest, the HTML cleaner (chrome
 stripped, images and links kept, allowlist enforced), ranking determinism and
-rotation, and site generation — every page renders, every internal link
+rotation, and site generation, every page renders, every internal link
 resolves, and two builds of the same data are byte-identical.
 
 ---
@@ -373,28 +373,28 @@ The output is written for it already. Every link is relative and no base URL is
 baked in, so the site works unchanged at a domain root, under a project subpath
 like `/mainspring/`, or straight from `file://`. `.nojekyll` is written on every
 build. If you point `SITE_DIR` at a deploy checkout, the build only clears the
-directories it owns — a `.git` directory or a `CNAME` is left alone.
+directories it owns, a `.git` directory or a `CNAME` is left alone.
 
 ---
 
 ## Roadmap
 
-**Milestone 1 — a newspaper from free Substacks.** *Done.* RSS ingestion with
+**Milestone 1, a newspaper from free Substacks.** *Done.* RSS ingestion with
 URL dedup, the shared Substack HTML cleaner, local standfirsts, headline
 hierarchy with lead rotation, the static site (front page, article pages,
 publication pages, dated archive), the JSON API, and the scheduler.
 
-**Milestone 2 — paid Substacks, over email.** A paid feed carries only a teaser,
+**Milestone 2, paid Substacks, over email.** A paid feed carries only a teaser,
 but the full post is already in your inbox. Mainspring will read it from a
-mailbox you control — either IMAP against your existing account, read-only, or a
+mailbox you control, either IMAP against your existing account, read-only, or a
 dedicated forward-to address that a filter feeds (preferred: Mainspring never
 sees the rest of your mail). Substack's post emails are structured consistently
 enough to parse from headers rather than guess at, and the body is the same
-markup the web post uses — so it routes through the same cleaner and produces the
+markup the web post uses, so it routes through the same cleaner and produces the
 same article. The interface is already fixed in
 `mainspring/ingest/email_imap.py`, including the open questions.
 
-**Milestone 3 — a daily edition on GitHub Pages.** A scheduled Actions workflow
+**Milestone 3, a daily edition on GitHub Pages.** A scheduled Actions workflow
 running `scripts/build_edition.py` and publishing `site/`, so the repo's own site
 is the live demo. The build is already deterministic, which is what makes a daily
 commit produce a clean diff.
@@ -414,7 +414,7 @@ Mainspring is built for local use:
   refresh. `python -m mainspring.app` binds to `127.0.0.1` for that reason; if
   you expose it, put it behind a reverse proxy with auth.
 - `news.db` is plaintext. Put it on an encrypted volume if your reading history
-  is sensitive — `DB_PATH` exists for that.
+  is sensitive, `DB_PATH` exists for that.
 - Article HTML is allowlist-sanitized before it is written, so a publication
   cannot put executable content into your site. That is a deliberate guarantee,
   not a side effect; see `mainspring/ingest/substack_html.py`.

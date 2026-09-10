@@ -89,7 +89,7 @@ _TEXT_BLOCKS: frozenset[str] = frozenset(
 #: Elements kept in the HTML but left out of the plain text.
 #:
 #: Captions only. A Substack post very often opens with its hero image, so its
-#: caption would otherwise be the first thing the summarizer reads — and a
+#: caption would otherwise be the first thing the summarizer reads, and a
 #: standfirst that begins "Photo by someone on Unsplash" is worse than no
 #: standfirst. The caption still renders on the article page.
 _TEXT_EXCLUDED: frozenset[str] = frozenset({"figcaption"})
@@ -113,7 +113,7 @@ _CHROME_CLASS_RE = re.compile(
     r"button-wrapper|pencraft-button|"
     r"tracking-pixel|beacon|"
     # Non-Substack news furniture. These sites fund themselves with appeals and
-    # syndicate under licences, and both live inside the article element — so
+    # syndicate under licences, and both live inside the article element, so
     # without these the summarizer reads a donation pitch as the lede.
     # Each of these is deliberately qualified rather than a bare word. A bare
     # "newsletter" matched Substack's own `newsletter-post` article wrapper and
@@ -142,7 +142,7 @@ _CHROME_CLASS_RE = re.compile(
 )
 
 #: A "chrome" element holding at least this share of the document's text is not
-#: chrome — the pattern misfired. Furniture is small; the article is not.
+#: chrome, the pattern misfired. Furniture is small; the article is not.
 _CHROME_MAX_TEXT_SHARE = 0.4
 
 #: Below this much total text the share guard is meaningless and is skipped. A
@@ -155,7 +155,7 @@ _CHROME_GUARD_MIN_TEXT = 400
 #:
 #: Prose is mostly words; navigation, "related stories" rails and link indexes are
 #: mostly links. Democracy Now's transcript pages are the case that motivated
-#: this — a sidebar of guests, topics and links matched a body selector and gave
+#: this, a sidebar of guests, topics and links matched a body selector and gave
 #: the summarizer "Related / Topics / Guests / Links / Transcript" as an article.
 #: Site-agnostic, so it protects against layouts nobody has looked at yet.
 _MAX_LINK_TEXT_SHARE = 0.5
@@ -180,7 +180,7 @@ _CHROME_HREF_RE = re.compile(
 
 #: Anchor text that means the anchor is a call to action. Compared against the
 #: anchor's stripped, lowercased text, so it only fires on short button-like
-#: labels — a sentence that happens to contain "subscribe" is left alone.
+#: labels, a sentence that happens to contain "subscribe" is left alone.
 _CHROME_LINK_TEXT = frozenset(
     {
         "subscribe", "subscribe now", "subscribe for free", "upgrade to paid",
@@ -197,8 +197,8 @@ _CHROME_LINK_TEXT = frozenset(
 #:
 #: The first four are Substack: ``.available-content`` is what a free (or
 #: unlocked) post uses and ``.body.markup`` is the inner wrapper. The rest cover
-#: the news CMSs people actually point Mainspring at — WordPress, Drupal, and a
-#: few hand-rolled ones — because a self-hosted reader should not refuse to read
+#: the news CMSs people actually point Mainspring at, WordPress, Drupal, and a
+#: few hand-rolled ones, because a self-hosted reader should not refuse to read
 #: anything that is not a Substack.
 #:
 #: Order matters and specificity wins: a generic ``article`` or ``main`` on a news
@@ -387,11 +387,11 @@ def strip_chrome(root: Tag) -> None:
 
 def _sanitize(root: Tag, base_url: str) -> None:
     """Strip chrome and non-allowlisted markup from ``root``, in place."""
-    # Pass 1 — remove banned tags and furniture. Idempotent, so it costs nothing
+    # Pass 1, remove banned tags and furniture. Idempotent, so it costs nothing
     # when extract_post_body has already run it over the whole document.
     strip_chrome(root)
 
-    # Pass 2 — images: resolve URLs, drop pixels, normalize attributes.
+    # Pass 2, images: resolve URLs, drop pixels, normalize attributes.
     for img in root.find_all("img"):
         if _is_tracking_pixel(img):
             img.decompose()
@@ -406,7 +406,7 @@ def _sanitize(root: Tag, base_url: str) -> None:
         if title:
             img.attrs["title"] = title
 
-    # Pass 3 — links: resolve relative hrefs, drop javascript: targets, and
+    # Pass 3, links: resolve relative hrefs, drop javascript: targets, and
     # mark external links so the template can add rel/target consistently.
     for anchor in root.find_all("a"):
         href = str(anchor.get("href") or "").strip()
@@ -415,7 +415,7 @@ def _sanitize(root: Tag, base_url: str) -> None:
             continue
         anchor.attrs = {"href": urljoin(base_url, href) if base_url else href}
 
-    # Pass 4 — everything else: keep allowlisted attributes, unwrap unknown
+    # Pass 4, everything else: keep allowlisted attributes, unwrap unknown
     # tags. Iterating over a materialized list because unwrap() mutates the tree.
     for tag in list(root.find_all(True)):
         if tag.decomposed:
@@ -428,7 +428,7 @@ def _sanitize(root: Tag, base_url: str) -> None:
         allowed = ALLOWED_ATTRS.get(tag.name, frozenset())
         tag.attrs = {k: v for k, v in tag.attrs.items() if k in allowed}
 
-    # Pass 5 — collapse the debris: elements left with neither text nor an
+    # Pass 5, collapse the debris: elements left with neither text nor an
     # image after all that removal.
     _drop_empty(root)
 
@@ -585,7 +585,7 @@ def extract_post_body(page_html: str, *, base_url: str = "") -> CleanedBody:
                 selector,
                 share * 100,
             )
-            # Remember it anyway — if nothing better turns up it still beats
+            # Remember it anyway, if nothing better turns up it still beats
             # handing back the entire document.
             best = best or container
             continue

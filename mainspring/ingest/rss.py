@@ -35,7 +35,7 @@ from .substack_html import CleanedBody, clean_body_html, extract_post_body, slug
 logger = logging.getLogger(__name__)
 
 #: Below this word count a feed body is treated as a teaser and the post URL is
-#: fetched instead. Substack's own excerpts run 30–60 words; a real short post
+#: fetched instead. Substack's own excerpts run 30-60 words; a real short post
 #: rarely falls under 120.
 TEASER_WORD_THRESHOLD = 120
 
@@ -365,7 +365,7 @@ def upsert_article(db: Session, publication: Publication, record: dict) -> str:
 
     The caller is responsible for committing.
     """
-    # Flush so rows added earlier in this batch are visible to the lookup — the
+    # Flush so rows added earlier in this batch are visible to the lookup, the
     # session does not autoflush. See _unique_slug for why that matters.
     db.flush()
     existing = db.query(Article).filter(Article.url == record["url"]).first()
@@ -463,7 +463,7 @@ def ingest(
         def parse_one(sub: Subscription) -> tuple[Subscription, list[dict] | Exception]:
             try:
                 return sub, parse_feed(sub, allow_fetch=allow_fetch)
-            except Exception as exc:  # noqa: BLE001 — one bad feed must not end the run
+            except Exception as exc:  # noqa: BLE001, one bad feed must not end the run
                 return sub, exc
 
         with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
@@ -479,7 +479,7 @@ def ingest(
             for record in outcome:
                 try:
                     action = upsert_article(db, publication, record)
-                except Exception as exc:  # noqa: BLE001 — skip the row, keep the feed
+                except Exception as exc:  # noqa: BLE001, skip the row, keep the feed
                     logger.warning("%s: could not store %s: %s", sub.name, record["url"], exc)
                     db.rollback()
                     report.skipped += 1

@@ -1,4 +1,4 @@
-# Mainspring subscriptions — example
+# Mainspring subscriptions, example
 #
 # Copy this to subscriptions.yaml and put your own publications in it:
 #
@@ -13,7 +13,7 @@
 #   name          Display name. Appears in bylines and standing heads.
 #   slug          URL-safe id. Becomes publications/<slug>.html, so changing it
 #                 breaks existing links. Pick once.
-#   feed_url      RSS endpoint. For a Substack this is <host>/feed — that works
+#   feed_url      RSS endpoint. For a Substack this is <host>/feed, that works
 #                 for custom domains (www.example.com/feed) as well as
 #                 example.substack.com/feed. Non-Substack feeds work too.
 #   tier          free  ingested over RSS. Works today.
@@ -22,7 +22,7 @@
 #   kind          newsletter  an individual writer, filing occasionally. Default.
 #                 wire        a news outlet, filing all day.
 #                 The front page carries a separate river for each, with its own
-#                 reserved slots — pooled, the wire takes every slot and a
+#                 reserved slots, pooled, the wire takes every slot and a
 #                 newsletter from three days ago never appears.
 #   fetch_pages   Optional, default true. false means never fetch the post page,
 #                 even when the feed carries only an excerpt. Use it when a
@@ -30,7 +30,7 @@
 #                 clean, or simply to avoid crawling someone.
 #   homepage_url  Optional. Defaults to feed_url with /feed removed.
 #
-# Check a publication before you add it — one can look perfectly healthy in a
+# Check a publication before you add it, one can look perfectly healthy in a
 # browser and still produce nothing here:
 #
 #     python scripts/check_feeds.py <url-or-domain-or-handle>
@@ -83,7 +83,7 @@ publications:
   #   tier: free
   #   kind: wire
 
-  # A publisher whose feed is clean but whose article pages defeat the cleaner —
+  # A publisher whose feed is clean but whose article pages defeat the cleaner -
   # Democracy Now wraps its transcripts in sidebars of guests, topics and links.
   # Its feed summaries are better copy, so never fetch the page.
   #

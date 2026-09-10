@@ -91,7 +91,7 @@ class Publication(Base):
         cascade="all, delete-orphan",
     )
 
-    def __repr__(self) -> str:  # pragma: no cover — debugging aid
+    def __repr__(self) -> str:  # pragma: no cover, debugging aid
         return f"<Publication {self.slug!r} tier={self.tier!r}>"
 
 
@@ -122,7 +122,7 @@ class Article(Base):
     #: Headline as published.
     title = Column(String(512), nullable=False)
 
-    #: Canonical post URL. The deduplication key across every ingest path —
+    #: Canonical post URL. The deduplication key across every ingest path -
     #: RSS today, email tomorrow.
     url = Column(String(1024), unique=True, nullable=False, index=True)
 
@@ -138,7 +138,7 @@ class Article(Base):
     #: feeds omit it.
     published_date = Column(DateTime, nullable=True, index=True)
 
-    #: Sanitized post body — the cleaner's output, rendered on the article page.
+    #: Sanitized post body, the cleaner's output, rendered on the article page.
     body_html = Column(Text, nullable=True)
 
     #: Plain-text rendering of the same body, fed to the summarizer.
@@ -182,7 +182,7 @@ class Article(Base):
         stamp = self.published_date or self.created_at
         return stamp.date().isoformat()
 
-    def __repr__(self) -> str:  # pragma: no cover — debugging aid
+    def __repr__(self) -> str:  # pragma: no cover, debugging aid
         return f"<Article {self.id} {self.title[:40]!r}>"
 
 
@@ -215,5 +215,5 @@ class DailyEdition(Base):
 
     lead_article: Mapped[Article | None] = relationship("Article")
 
-    def __repr__(self) -> str:  # pragma: no cover — debugging aid
+    def __repr__(self) -> str:  # pragma: no cover, debugging aid
         return f"<DailyEdition {self.date} n={self.article_count}>"

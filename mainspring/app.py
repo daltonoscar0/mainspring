@@ -92,7 +92,7 @@ def run_pipeline(*, ingest: bool = True) -> None:
         db = session()
         try:
             generate_standfirsts(db)
-        except Exception as exc:  # noqa: BLE001 — build anyway, with fewer deks
+        except Exception as exc:  # noqa: BLE001, build anyway, with fewer deks
             logger.error("Standfirst generation failed: %s", exc)
         finally:
             db.close()
@@ -100,7 +100,7 @@ def run_pipeline(*, ingest: bool = True) -> None:
         result = sitegen.build()
         logger.info("Build: %s", result.summary())
 
-    except Exception as exc:  # noqa: BLE001 — a background thread must not die silently
+    except Exception as exc:  # noqa: BLE001, a background thread must not die silently
         logger.exception("Pipeline failed: %s", exc)
     finally:
         _pipeline_lock.release()
@@ -135,14 +135,14 @@ async def lifespan(app: FastAPI):
         logger.info("No site yet — writing a placeholder front page.")
         try:
             sitegen.build()
-        except Exception as exc:  # noqa: BLE001 — the API is still useful
+        except Exception as exc:  # noqa: BLE001, the API is still useful
             logger.error("Initial build failed: %s", exc)
 
     # Mounted here rather than at import time: the directory has to exist before
     # StaticFiles will accept it, and the build above is what guarantees that.
     if config.SITE_DIR.is_dir():
         app.mount("/", StaticFiles(directory=str(config.SITE_DIR), html=True), name="site")
-    else:  # pragma: no cover — only if the build failed outright
+    else:  # pragma: no cover, only if the build failed outright
         logger.error("Site directory %s does not exist; / will 404.", config.SITE_DIR)
 
     _spawn(ingest=True)

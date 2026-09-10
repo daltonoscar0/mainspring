@@ -92,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.dev:
-        # Set before anything reads it — config.dev_mode() checks at call time.
+        # Set before anything reads it, config.dev_mode() checks at call time.
         os.environ["DEV_MODE"] = "1"
 
     failures: list[str] = []
@@ -112,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
         report = rss.ingest(subscriptions, allow_fetch=not args.offline)
         logger.info("Ingest: %s", report.summary())
         if not report.ok:
-            # A single unreachable feed should not fail the whole edition — the
+            # A single unreachable feed should not fail the whole edition, the
             # other publications still have news. It is reported, and the exit
             # code reflects it, so a cron run surfaces the problem.
             for error in report.errors:
@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             written = generate_standfirsts(db, limit=args.limit)
             logger.info("Standfirsts: %d written.", written)
-        except Exception as exc:  # noqa: BLE001 — reported, then the build still runs
+        except Exception as exc:  # noqa: BLE001, reported, then the build still runs
             logger.error("Standfirst generation failed: %s", exc)
             failures.append("standfirst generation failed")
         finally:
@@ -136,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     # --- 3. build ----------------------------------------------------------
     try:
         result = sitegen.build(site_dir=args.site_dir)
-    except Exception as exc:  # noqa: BLE001 — a failed build is a failed run
+    except Exception as exc:  # noqa: BLE001, a failed build is a failed run
         logger.exception("Build failed: %s", exc)
         return 1
 

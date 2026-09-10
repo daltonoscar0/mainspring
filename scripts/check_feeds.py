@@ -58,7 +58,7 @@ SAMPLE_SIZE = 6
 #:
 #: Worth checking separately from body length, because a publication that has
 #: moved elsewhere leaves a feed behind that still parses and still carries full
-#: text — it just stops updating. Read Max is the case in point: it moved to
+#: text, it just stops updating. Read Max is the case in point: it moved to
 #: Patreon, and its Substack feed still returns twenty complete posts. Sixty days
 #: is generous for a newsletter but short enough to catch an abandoned one.
 STALE_DAYS = 60
@@ -99,7 +99,7 @@ class Result:
 
 
 #: A URL *path* already pointing at a feed, so ``/feed`` must not be appended.
-#: Matched against the path only, never the whole URL — non-Substack publishers
+#: Matched against the path only, never the whole URL, non-Substack publishers
 #: hang query strings off their feeds (``/feed/?post_type=article``,
 #: ``/feed/?rss``) and testing the full string would miss those and produce
 #: ``/feed/?post_type=article/feed``.
@@ -136,7 +136,7 @@ def normalize(candidate: str) -> str:
 
     parsed = urlparse(text)
     if _FEED_PATH.search(parsed.path) or parsed.query:
-        # A path that already names a feed, or any query string at all — a
+        # A path that already names a feed, or any query string at all, a
         # publisher who bothered to write one is pointing at something specific.
         return text
 
@@ -276,7 +276,7 @@ def check(candidate: str, *, timeout: int) -> Result:
 
     if not parsed.entries:
         # A 200 with no entries almost always means the URL is a web page, not
-        # a feed — i.e. the domain belongs to something else entirely.
+        # a feed, i.e. the domain belongs to something else entirely.
         hint = (
             "This URL returns a web page, not a feed. The domain probably is not "
             "this publication."
@@ -288,7 +288,7 @@ def check(candidate: str, *, timeout: int) -> Result:
     title = str(parsed.feed.get("title", "") or "").strip()
     homepage = str(parsed.feed.get("link", "") or "").strip()
 
-    # Clean real bodies rather than trusting raw payload length — chrome inflates
+    # Clean real bodies rather than trusting raw payload length, chrome inflates
     # a teaser to look like an article.
     word_counts: list[int] = []
     for entry in parsed.entries[:SAMPLE_SIZE]:
@@ -336,7 +336,7 @@ def check(candidate: str, *, timeout: int) -> Result:
         # A teaser feed is not the end of it: the ingester falls back to fetching
         # the post page. Whether that works is the difference between "free, at
         # the cost of one extra request per post" and "paid, wait for email
-        # ingestion" — so actually try it rather than guess from the feed.
+        # ingestion", so actually try it rather than guess from the feed.
         result = _probe_fallback(result, parsed.entries[0], timeout=timeout)
     elif full_text < len(word_counts) / 2:
         result.verdict = "mostly teasers"
@@ -382,7 +382,7 @@ def report(results: list[Result]) -> None:
     print("Paste into subscriptions.yaml under `publications:`\n")
     for result in usable:
         if result.stale:
-            print(f"  # STALE — no posts in {result.age_days} days. Verify before keeping.")
+            print(f"  # STALE, no posts in {result.age_days} days. Verify before keeping.")
         elif result.tier == "paid":
             print("  # Teasers only. Waits on email ingestion (Milestone 2).")
         print(f"  - name: {result.title}")

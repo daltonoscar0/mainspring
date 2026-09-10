@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 #: Directories under ``site/`` that the generator owns outright. Cleared before
 #: each build so a renamed post does not leave an orphan page behind. Anything
-#: else in ``site/`` — a CNAME, a .git directory, a favicon you added — is left
+#: else in ``site/``, a CNAME, a .git directory, a favicon you added, is left
 #: untouched, which is what makes it safe to point SITE_DIR at a deploy checkout.
 OWNED_DIRS = ("articles", "publications", "editions", "static")
 
@@ -336,7 +336,7 @@ def ranking_view(ranking: rank.Ranking, names: dict[str, str]) -> dict:
             "groups": desks(section.articles),
         }
         for section in ranking.sections
-        # A river with nothing in it gets no heading — an empty section rule
+        # A river with nothing in it gets no heading, an empty section rule
         # reads as a rendering fault rather than a quiet news day.
         if section.articles
     ]
@@ -466,7 +466,7 @@ def build_site(
     static_out = out / "static"
     if config.STATIC_DIR.is_dir():
         shutil.copytree(config.STATIC_DIR, static_out, dirs_exist_ok=True)
-    else:  # pragma: no cover — only if the package is installed incompletely
+    else:  # pragma: no cover, only if the package is installed incompletely
         static_out.mkdir(parents=True, exist_ok=True)
         report.errors.append(f"static directory missing: {config.STATIC_DIR}")
 
