@@ -2,6 +2,8 @@
 
 # Mainspring
 
+[![tests](https://github.com/daltonoscar0/mainspring/actions/workflows/tests.yml/badge.svg)](https://github.com/daltonoscar0/mainspring/actions/workflows/tests.yml)
+
 > *"Intelligent discontent is the mainspring of civilization."*, Eugene V. Debs
 
 A self-hosted, privacy-first reader that turns every Substack you subscribe to
@@ -420,6 +422,21 @@ Mainspring is built for local use:
   not a side effect; see `mainspring/ingest/substack_html.py`.
 
 ---
+
+## History
+
+This is the second version. v1 was
+[`the_mainspring`](https://github.com/daltonoscar0/the_mainspring): an RSS
+aggregator that pulled feeds from 14 progressive news outlets, scraped the full
+article text, and wrote summaries with a locally-running BART model
+(`sshleifer/distilbart-cnn-12-6`) into a SQLite database. Same premise — no API
+keys, no cloud, nothing leaving your hardware — and the same Debs line at the
+top.
+
+Mainspring keeps that premise and changes the shape: Substack subscriptions
+rather than a fixed outlet list, a built newspaper front page with lead and
+secondary stories rather than a flat list, per-publication pages, and a dated
+archive.
 
 ## License
 
